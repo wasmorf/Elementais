@@ -291,6 +291,11 @@ button:focus-visible{outline:3px solid var(--ipe);outline-offset:2px}
 .link-x.pequeno{margin-top:0;padding:3px 10px 3px 3px;font-size:12px;vertical-align:middle}
 .link-x.pequeno .x-letra{width:20px;height:20px;font-size:12px}
 .cp-cod{width:100%;box-sizing:border-box;font-family:var(--mono);font-size:11px;padding:8px;border-radius:10px;border:1px solid var(--linha);background:var(--painel2);color:var(--texto);resize:vertical;word-break:break-all}
+.sel-criaturas{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;margin-bottom:10px;-webkit-overflow-scrolling:touch}
+.sel-cri{display:flex;align-items:center;gap:6px;flex:none;background:var(--painel2);border:2px solid transparent;border-radius:12px;padding:6px 10px 6px 6px;color:inherit;font:inherit;font-size:13px;font-weight:700;cursor:pointer;text-align:left}
+.sel-cri.on{border-color:var(--ipe)}
+.sel-cri .mini{width:40px;height:40px;display:block}
+.sel-cri small{display:block;font-weight:400;color:var(--suave);font-size:11px}
 .vazio{border:1px dashed var(--linha);border-radius:10px;min-height:66px;display:grid;place-items:center;color:var(--suave);font-size:12px}
 .barra{height:7px;background:#0b141d;border-radius:4px;overflow:hidden;margin-top:4px}
 .barra i{display:block;height:100%;width:100%;background:var(--hp-ok);transition:width .5s ease, background-color .3s}
@@ -1316,7 +1321,7 @@ function guardar(c, pref = 0) {
     return -1;
 }
 const guardadas = () => S.caixas.flat().filter(Boolean);
-const todas = () => [...S.equipe, ...guardadas()];
+const todas = () => [...S.equipe, ...guardadas(), ...((S.bercario && S.bercario.pais) || []).filter(Boolean)];
 function novoEstado() { return { dinheiro: 500, insignias: [], equipe: [], caixas: novasCaixas(), nomesCaixas: NOMES_CAIXAS.slice(), mochila: Object.assign(Object.fromEntries(Object.keys(ITENS).map(k => [k, 0])), { cristal: 5, pocao: 3, petisco: 1 }), vencidos: {}, vistos: {}, capturados: {} }; }
 let falhaSalvar = false;
 function dadosParaSalvar() {
@@ -1370,6 +1375,10 @@ function carregar() {
             todas().forEach(c => { var _a; (_a = c.amizade) !== null && _a !== void 0 ? _a : (c.amizade = 70); });
             // limpeza de dados antigos: golpes ou espécies que não existem mais
             S.equipe = S.equipe.filter(c => c && ESP[c.esp]);
+            if (S.bercario && S.bercario.pais)
+                S.bercario.pais = S.bercario.pais.map(c => c && ESP[c.esp] ? c : null);
+            if (S.ovos)
+                S.ovos = S.ovos.filter(o => o && ESP[o.esp]).map(o => { o.golpesOvo = (o.golpesOvo || []).filter(g => GOLPES[g]); return o; });
             (S.caixas || []).forEach(cx => { for (let i = 0; i < cx.length; i++)
                 if (cx[i] && !ESP[cx[i].esp])
                     cx[i] = null; });
@@ -1496,6 +1505,8 @@ function telaHub() {
         <div>${cap ? `<span class="feito">Capturada ${ICO.check}</span>` : `<button class="btn" data-lenda="${i}" ${lib && hora ? "" : "disabled"}>Procurar</button>`}</div></div>`;
     }).join("")}
       <div class="local"><h3>Feira de Trocas · Seu Bento</h3><p>Troque uma criatura com o mascate e receba de volta. Algumas evoluem na troca.</p><div class="acao"><button class="btn sec" id="troca">Fazer troca</button></div></div>
+      <div class="local"><h3>Mestra Dona Cotinha</h3><p>Ensina golpes especiais que não existem em pergaminho e faz criaturas lembrarem golpes esquecidos.</p><div class="acao"><button class="btn sec" id="mestra">Visitar</button></div></div>
+      <div class="local"><h3>Berçário da Vó Nena</h3><p>Deixe duas criaturas da mesma família e receba ovos com golpes de ovo.${(S.ovos || []).some(o => !o.buscado) ? " <b>Tem ovo esperando!</b>" : ""}</p><div class="acao"><button class="btn sec" id="bercarioBtn">Entrar</button></div></div>
       <div class="local"><h3>Bancada de Técnicas</h3><p>Crie Pergaminhos de Técnica com essências e ensine golpes novos.</p><div class="acao"><button class="btn sec" id="bancada">Abrir bancada</button></div></div>
       <div class="local" style="background:linear-gradient(90deg,#3a1f2a,var(--painel2))"><h3>Centro de Cura</h3><p>Cura grátis com a enfermeira Graça, Terminal de Guarda, Mercado, Café e varanda de descanso.</p><div class="acao"><button class="btn" id="centro">Entrar</button></div></div>
     </div></section>
@@ -1516,6 +1527,8 @@ function telaHub() {
     $("#grilhao").onclick = telaGrilhao;
     $("#liga").onclick = telaGinasios;
     $("#bancada").onclick = telaBancada;
+    $("#mestra").onclick = () => { MES.i = 0; telaMestra(); };
+    $("#bercarioBtn").onclick = telaBercario;
     $("#territorios").onclick = telaTerritorios;
     $("#caderno").onclick = () => telaCaderno();
     $("#vertipos").onclick = tabelaTipos;
@@ -2707,6 +2720,7 @@ async function encerrar(res) {
         await falar(`Você correu para o Centro de Cura e perdeu $${perda} no caminho.`);
         curarTudo();
     }
+    await passosBercario();
     for (const c of S.equipe)
         if (c.evoluir)
             await evoluir(c);
@@ -4193,13 +4207,24 @@ GOLPES_NOVOS.forEach(([k, nome, tipo, cat, poder, prec, pp, desc, fx]) => {
     GOLPES[k] = G;
     NOVOS.push(k);
 });
+// golpes que só a Mestra Dona Cotinha ensina (2 por tipo, com efeitos especiais)
+const TUTOR = (() => {
+    const l = [];
+    TIPOS.forEach(t => {
+        const cand = NOVOS.filter(k => { const G = GOLPES[k]; return G.tipo === t && !G.ohko && !G.explode && (G.protege || G.cura || G.descanso || G.semente || G.curaStatus || G.drena || G.critSobe || G.prioridade > 0 || G.critAlto); })
+            .sort((a, b) => (GOLPES[b].poder || 0) - (GOLPES[a].poder || 0) || GOLPES[a].nome.localeCompare(GOLPES[b].nome));
+        l.push(...cand.slice(0, 2));
+    });
+    return l;
+})();
+TUTOR.forEach(k => GOLPES[k].tutor = 1);
 // todos os golpes novos também viram Pergaminhos de Técnica
-NOVOS.forEach(k => { if (!PTS.includes(k))
+NOVOS.forEach(k => { if (!PTS.includes(k) && !GOLPES[k].tutor)
     PTS.push(k); });
 // cada linha evolutiva aprende golpes novos dos seus tipos (sorteio fixo por linha)
 (function () {
     const porTipo = {};
-    NOVOS.forEach(k => { const G = GOLPES[k]; if (G.ohko || G.explode)
+    NOVOS.forEach(k => { const G = GOLPES[k]; if (G.ohko || G.explode || G.tutor)
         return; if (G.cat === "S" && !(G.euMuda || G.alvoMuda || G.efeito || G.confunde || G.cura || G.protege || G.semente || G.curaStatus || G.critSobe))
         return; (porTipo[G.tipo] = porTipo[G.tipo] || []).push(k); });
     const tiposLinha = {};
@@ -4224,6 +4249,209 @@ NOVOS.forEach(k => { if (!PTS.includes(k))
         APRENDE[linha].sort((a, b) => a[0] - b[0]);
     });
 })();
+/* ======================= MESTRA DOS GOLPES e BERÇÁRIO ======================= */
+// golpes de ovo: 4 por linha evolutiva (2 do próprio tipo, 2 de outros), sorteio fixo
+const OVO_GOLPES = {};
+(function () {
+    const pool = NOVOS.filter(k => !GOLPES[k].ohko && !GOLPES[k].explode && !GOLPES[k].tutor && !(GOLPES[k].cat === "S" && !(GOLPES[k].euMuda || GOLPES[k].alvoMuda || GOLPES[k].efeito || GOLPES[k].confunde || GOLPES[k].cura || GOLPES[k].protege)));
+    const tl = {};
+    Object.values(ESP).forEach(e => { (tl[e.linha] = tl[e.linha] || new Set()); e.tipos.forEach(t => tl[e.linha].add(t)); });
+    Object.keys(tl).forEach(linha => {
+        if (!APRENDE[linha])
+            return;
+        const r = rngDe(hashStr("ovo|" + linha)), ja = new Set(APRENDE[linha].map(x => x[1])), ts = [...tl[linha]];
+        const mesmo = pool.filter(k => ts.includes(GOLPES[k].tipo) && !ja.has(k)), outro = pool.filter(k => !ts.includes(GOLPES[k].tipo) && !ja.has(k));
+        const l = [];
+        const tira = a => { for (let n = 0; n < 6 && a.length; n++) {
+            const k = a[Math.floor(r() * a.length)];
+            if (!l.includes(k)) {
+                l.push(k);
+                return;
+            }
+        } };
+        tira(mesmo);
+        tira(mesmo);
+        tira(outro);
+        tira(outro);
+        OVO_GOLPES[linha] = l;
+    });
+})();
+const PRECO_LEMBRAR = 300;
+const precoTutor = k => { const G = GOLPES[k]; return G.cat === "S" ? 2000 : Math.max(1500, Math.round((G.poder || 60) * 40 / 100) * 100); };
+function lembraveis(c) { const e = ESP[c.esp]; return [...new Set((APRENDE[e.linha] || []).filter(([n, g]) => n <= c.nivel && GOLPES[g] && !c.golpes.some(x => x.id === g)).map(x => x[1]))]; }
+// ensina um golpe tratando o limite de 4 (usado pela Mestra)
+function ensinarGolpe(c, g, { custo = 0, voltar, fonte = "" } = {}) {
+    const G = GOLPES[g], nm = nomeDe(c);
+    if (c.golpes.some(x => x.id === g)) {
+        aviso(`${nm} já sabe ${G.nome}.`);
+        return;
+    }
+    if (S.dinheiro < custo) {
+        aviso("Dinheiro insuficiente.");
+        return;
+    }
+    const concluir = msg => { S.dinheiro -= custo; c.amizade = Math.min(255, c.amizade + 1); salvar(); fechar(); if (voltar)
+        voltar(); aviso(msg); };
+    if (c.golpes.length < 4) {
+        c.golpes.push({ id: g, pp: G.pp });
+        concluir(`${nm} ${fonte === "lembrar" ? "lembrou" : "aprendeu"} ${G.nome}!`);
+        return;
+    }
+    modal(`<h3 style="margin:0 0 4px;font-family:var(--display);font-weight:400">${nm} já sabe 4 golpes</h3><p class="dica" style="margin-bottom:10px">Qual deve esquecer para ${fonte === "lembrar" ? "lembrar" : "aprender"} ${G.nome}?${custo ? ` Custa $${custo}.` : ""}</p>
+    <div class="golpes-lista">${c.golpes.map((x, k) => { const H = GOLPES[x.id]; return `<button class="golpe-card" data-esq="${k}" style="border:1px solid var(--linha);text-align:left"><b>${H.nome}</b>${chipTipo(H.tipo)} <span>${H.poder ? "Poder " + H.poder : "status"}</span><small class="gdesc">${descGolpe(H)}</small></button>`; }).join("")}</div>
+    <div class="acoes-modal"><button class="btn sec" id="esqNao">Cancelar</button></div>`);
+    $("#esqNao").onclick = () => { fechar(); if (voltar)
+        voltar(); };
+    camada.querySelectorAll("[data-esq]").forEach(q => q.onclick = () => { const k = +q.dataset.esq, velho = GOLPES[c.golpes[k].id].nome; c.golpes[k] = { id: g, pp: G.pp }; concluir(`${nm} esqueceu ${velho} e ${fonte === "lembrar" ? "lembrou" : "aprendeu"} ${G.nome}!`); });
+}
+let MES = { i: 0, aba: "tutor" };
+function telaMestra() {
+    fechar();
+    if (MES.i >= S.equipe.length)
+        MES.i = 0;
+    const c = S.equipe[MES.i], e = ESP[c.esp];
+    const seletor = `<div class="sel-criaturas">${S.equipe.map((x, i) => `<button class="sel-cri${i === MES.i ? " on" : ""}" data-mi="${i}"><span class="mini">${arteC(x)}</span><span>${nomeDe(x)}<small>Nv ${x.nivel}</small></span></button>`).join("")}</div>`;
+    const abas = `<div class="abas"><button class="aba${MES.aba === "tutor" ? " on" : ""}" data-ma="tutor">Golpes da Mestra</button><button class="aba${MES.aba === "lembrar" ? " on" : ""}" data-ma="lembrar">Relembrar golpes</button></div>`;
+    let lista = "";
+    if (MES.aba === "tutor") {
+        lista = `<p class="dica">Golpes especiais que só a Mestra ensina (não existem em pergaminho). A criatura precisa ser compatível. Pague uma vez e o golpe é ensinado na hora.</p><div class="territorios">` + TUTOR.map(g => {
+            const G = GOLPES[g], comp = compativel(c.esp, g), sabe = c.golpes.some(x => x.id === g), p = precoTutor(g), ok = comp && !sabe && S.dinheiro >= p;
+            return `<div class="terr"><h3>${G.nome} ${chipTipo(G.tipo)}</h3><p>${NOME_CAT[G.cat]}${G.poder ? " · Poder " + G.poder : ""} · ${precTxt(G)} · PP ${G.pp}</p><p class="gdesc">${descGolpe(G)}</p>
+        <p>Preço: <b>$${p}</b>${sabe ? " · já sabe" : comp ? "" : " · incompatível com " + e.nome}</p><button class="btn${ok ? "" : " sec"}" data-tu="${g}" ${ok ? "" : "disabled"}>Ensinar</button></div>`;
+        }).join("") + `</div>`;
+    }
+    else {
+        const l = lembraveis(c);
+        lista = `<p class="dica">A Mestra ajuda a criatura a lembrar golpes que ela aprende por nível e que já poderia saber (até o nível ${c.nivel}), inclusive os de antes de evoluir. Cada lembrança custa <b>$${PRECO_LEMBRAR}</b>.</p>` +
+            (l.length ? `<div class="territorios">` + l.map(g => {
+                const G = GOLPES[g], ok = S.dinheiro >= PRECO_LEMBRAR;
+                const nv = APRENDE[e.linha].find(x => x[1] === g)[0];
+                return `<div class="terr"><h3>${G.nome} ${chipTipo(G.tipo)}</h3><p>${NOME_CAT[G.cat]}${G.poder ? " · Poder " + G.poder : ""} · ${precTxt(G)} · PP ${G.pp} · nível ${nv}</p><p class="gdesc">${descGolpe(G)}</p><button class="btn${ok ? "" : " sec"}" data-le="${g}" ${ok ? "" : "disabled"}>Relembrar</button></div>`;
+            }).join("") + `</div>`
+                : `<div class="vazio">${e.nome} não tem golpes para lembrar agora.</div>`);
+    }
+    app.innerHTML = topo() + `<div class="cx-topo"><div><h2 style="font-family:var(--display);font-weight:400;margin:0;font-size:20px">Mestra Dona Cotinha</h2>
+    <p class="dica">"Já ensinei capoeira pra onça e samba pra jacaré. Escolha quem vai aprender." Você tem $${S.dinheiro}.</p></div>
+    <button class="btn sec" id="meVoltar">Voltar ao mapa</button></div>
+    <section class="bloco">${seletor}${abas}${lista}</section>`;
+    $("#meVoltar").onclick = telaHub;
+    app.querySelectorAll("[data-mi]").forEach(b => b.onclick = () => { MES.i = +b.dataset.mi; telaMestra(); });
+    app.querySelectorAll("[data-ma]").forEach(b => b.onclick = () => { MES.aba = b.dataset.ma; telaMestra(); });
+    app.querySelectorAll("[data-tu]").forEach(b => b.onclick = () => ensinarGolpe(c, b.dataset.tu, { custo: precoTutor(b.dataset.tu), voltar: telaMestra }));
+    app.querySelectorAll("[data-le]").forEach(b => b.onclick = () => ensinarGolpe(c, b.dataset.le, { custo: PRECO_LEMBRAR, voltar: telaMestra, fonte: "lembrar" }));
+}
+/* ---------- Berçário ---------- */
+const PASSOS_OVO = 3, BATALHAS_CHOCAR = 5, MAX_OVOS = 3;
+const preEvo = k => Object.keys(ESP).find(x => (ESP[x].evos || []).some(ev => ev.para === k));
+function baseDe(k) { let b = k, n = 0; for (let p; (p = preEvo(b)) && n < 5; n++)
+    b = p; return b; }
+function bercario() { S.bercario = S.bercario || { pais: [null, null], passos: 0 }; S.ovos = S.ovos || []; return S.bercario; }
+function podeCruzar(a, b) { if (!a || !b)
+    return false; const ea = ESP[a.esp], eb = ESP[b.esp]; return ea.linha === eb.linha && !ea.lendaria && !eb.lendaria && !ea.forma && !eb.forma; }
+const iconeOvo = (cor = "#f3ead2", pinta = "#7fc8ff") => `<svg viewBox="0 0 40 48" aria-hidden="true"><path d="M20 4C29 4 35 18 35 29C35 39 28 45 20 45C12 45 5 39 5 29C5 18 11 4 20 4Z" fill="${cor}" stroke="#0a1119" stroke-width="2.6"/><circle cx="14" cy="22" r="3.4" fill="${pinta}"/><circle cx="25" cy="31" r="4.2" fill="${pinta}"/><circle cx="23" cy="15" r="2.4" fill="${pinta}"/><ellipse cx="13" cy="14" rx="2.6" ry="4" fill="#fff" opacity=".6" transform="rotate(20 13 14)"/></svg>`;
+function criarOvo(a, b) {
+    const mae = Math.random() < .5 ? a : b, base = baseDe(mae.esp), linha = ESP[base].linha;
+    const talento = {};
+    const herdados = [...ATR].sort(() => Math.random() - .5).slice(0, 3);
+    ATR.forEach(x => { talento[x] = herdados.includes(x) ? (Math.random() < .5 ? a : b).talento[x] : Math.floor(Math.random() * 32); });
+    const temp = Math.random() < .5 ? (Math.random() < .5 ? a : b).temp : Math.floor(Math.random() * TEMPERAMENTOS.length);
+    const lista = OVO_GOLPES[linha] || [];
+    let golpesOvo = lista.filter(g => a.golpes.some(x => x.id === g) || b.golpes.some(x => x.id === g));
+    if (!golpesOvo.length && lista.length)
+        golpesOvo = [lista[Math.floor(Math.random() * lista.length)]];
+    return { id: Date.now() + "-" + Math.floor(Math.random() * 1e6), esp: base, falta: BATALHAS_CHOCAR, talento, temp, golpesOvo: golpesOvo.slice(0, 4), rara: Math.random() < chanceRara() };
+}
+function chocar(o) {
+    const c = criar(o.esp, 5);
+    c.talento = o.talento;
+    c.temp = o.temp;
+    c.rara = !!o.rara;
+    c.amizade = 120;
+    const nivel = c.golpes.map(x => x.id);
+    const ids = [...new Set([...o.golpesOvo, ...nivel.reverse()])].slice(0, 4);
+    c.golpes = ids.map(g => ({ id: g, pp: GOLPES[g].pp }));
+    c.hp = stats(c).hp;
+    S.capturados[o.esp] = 1;
+    S.vistos[o.esp] = 1;
+    if (c.rara) {
+        S.raras = S.raras || {};
+        S.raras[o.esp] = 1;
+    }
+    if (S.equipe.length < 6) {
+        S.equipe.push(c);
+        return "equipe";
+    }
+    if (guardar(c) >= 0)
+        return "terminal";
+    return null;
+}
+// chamado ao fim de cada batalha
+async function passosBercario() {
+    const br = bercario();
+    if (podeCruzar(br.pais[0], br.pais[1]) && S.ovos.length < MAX_OVOS) {
+        br.passos++;
+        if (br.passos >= PASSOS_OVO) {
+            br.passos = 0;
+            S.ovos.push(criarOvo(br.pais[0], br.pais[1]));
+            await falar("Recado da Vó Nena: apareceu um ovo no Berçário! Passe lá para buscar.", 2200);
+        }
+    }
+    for (const o of S.ovos.filter(o => o.buscado)) {
+        if (o.falta > 0)
+            o.falta--;
+        if (o.falta <= 0) {
+            await falar("Ué? O ovo está se mexendo...", 1400);
+            const onde = chocar(o);
+            if (!onde) {
+                o.falta = 0;
+                await falar("Mas não há espaço na equipe nem no Terminal. Libere uma vaga para ele nascer.", 2200);
+                continue;
+            }
+            S.ovos = S.ovos.filter(x => x !== o);
+            await falar(`Nasceu um ${ESP[o.esp].nome}${o.rara ? " de cores raras" : ""}! ${onde === "equipe" ? "Ele entrou na sua equipe." : "Ele foi para o Terminal de Guarda."}`, 2400);
+        }
+    }
+}
+function telaBercario() {
+    fechar();
+    const br = bercario();
+    const pais = br.pais, compat = podeCruzar(pais[0], pais[1]);
+    const vaga = pais.indexOf(null);
+    const slot = (c, k) => c ? `<div class="terr"><div style="display:flex;gap:10px;align-items:center"><div class="mini" style="width:64px;height:64px">${arteC(c)}</div><div><h3>${nomeDe(c)}</h3>${tiposHtml(c.esp)}<p>Nv ${c.nivel} · ${TEMPERAMENTOS[c.temp][0]}</p></div></div>
+      <button class="btn sec" data-ret="${k}">Retirar</button></div>` : `<div class="vazio" style="min-height:120px">Vaga livre</div>`;
+    const linha = compat ? ESP[baseDe(pais[0].esp)].linha : null;
+    const ovos = S.ovos.map((o, i) => `<div class="terr"><div style="display:flex;gap:10px;align-items:center"><div class="mini" style="width:48px;height:58px">${iconeOvo()}</div><div><h3>Ovo</h3><p>${o.buscado ? `Choca em <b>${o.falta}</b> batalha${o.falta === 1 ? "" : "s"}.` : "Esperando você buscar."}</p></div></div>
+      ${o.buscado ? `<div class="barra" style="margin-top:8px"><i style="width:${(BATALHAS_CHOCAR - o.falta) / BATALHAS_CHOCAR * 100}%;background:var(--exp)"></i></div>` : `<button class="btn" data-busca="${i}">Buscar ovo</button>`}</div>`).join("");
+    app.innerHTML = topo() + `<div class="cx-topo"><div><h2 style="font-family:var(--display);font-weight:400;margin:0;font-size:20px">Berçário da Vó Nena</h2>
+    <p class="dica">"Deixa dois bichinhos da mesma família comigo que eu cuido. De vez em quando aparece um ovo!"</p></div>
+    <button class="btn sec" id="beVoltar">Voltar ao mapa</button></div>
+    <section class="bloco" style="margin-bottom:12px"><h2>Criaturas no Berçário</h2>
+      <div class="territorios">${slot(pais[0], 0)}${slot(pais[1], 1)}</div>
+      <p class="dica" style="margin-top:8px">${!pais[0] || !pais[1] ? "Deixe duas criaturas da mesma linha evolutiva (por exemplo, a forma inicial e a evoluída)." : compat ? `Elas se dão bem! Um ovo aparece a cada ${PASSOS_OVO} batalhas (${br.passos}/${PASSOS_OVO} agora)${S.ovos.length >= MAX_OVOS ? ", mas o Berçário está cheio de ovos: busque algum" : ""}.` : "Essas duas não são da mesma linha evolutiva (ou uma é lendária). Não vai aparecer ovo."}</p>
+      ${linha && OVO_GOLPES[linha] && OVO_GOLPES[linha].length ? `<p class="dica">Golpes de ovo desta família: ${OVO_GOLPES[linha].map(g => `<b>${GOLPES[g].nome}</b>`).join(", ")}.</p>` : ""}
+    </section>
+    ${vaga >= 0 ? `<section class="bloco" style="margin-bottom:12px"><h2>Deixar uma criatura</h2>${S.equipe.length > 1 ? `<div class="equipe">${S.equipe.map((c, i) => `<button class="membro" data-dep="${i}"><div class="mini">${arteC(c)}</div><div><div class="nm"><span>${nomeDe(c)}</span><span class="nv">Nv ${c.nivel}</span></div></div></button>`).join("")}</div>` : `<div class="vazio">Você precisa ficar com pelo menos uma criatura na equipe.</div>`}</section>` : ""}
+    <section class="bloco"><h2>Ovos (${S.ovos.length}/${MAX_OVOS})</h2>${ovos ? `<div class="territorios">${ovos}</div>` : `<div class="vazio">Nenhum ovo ainda.</div>`}
+      <p class="dica" style="margin-top:8px">Depois de buscar, o ovo vai com você e choca após ${BATALHAS_CHOCAR} batalhas. O filhote nasce no nível 5 e vai para a equipe (ou para o Terminal, se a equipe estiver cheia).</p></section>`;
+    $("#beVoltar").onclick = telaHub;
+    app.querySelectorAll("[data-dep]").forEach(b => b.onclick = () => { const i = +b.dataset.dep; if (S.equipe.length <= 1)
+        return; const c = S.equipe.splice(i, 1)[0]; const v = br.pais.indexOf(null); br.pais[v] = c; br.passos = 0; salvar(); telaBercario(); aviso(`${nomeDe(c)} ficou com a Vó Nena.`); });
+    app.querySelectorAll("[data-ret]").forEach(b => b.onclick = () => {
+        const k = +b.dataset.ret, c = br.pais[k];
+        if (S.equipe.length < 6)
+            S.equipe.push(c);
+        else if (guardar(c) < 0) {
+            aviso("Sem espaço na equipe nem no Terminal.");
+            return;
+        }
+        br.pais[k] = null;
+        br.passos = 0;
+        salvar();
+        telaBercario();
+        aviso(`${nomeDe(c)} voltou ${S.equipe.includes(c) ? "para a equipe" : "para o Terminal"}.`);
+    });
+    app.querySelectorAll("[data-busca]").forEach(b => b.onclick = () => { S.ovos[+b.dataset.busca].buscado = true; salvar(); telaBercario(); aviso("Você pegou o ovo. Ele choca depois de algumas batalhas."); });
+}
 /* ======================= TELA INICIAL ======================= */
 const PERFIL_X = "https://x.com/wasmorf1?s=11";
 const linkPerfil = (cls) => `<a class="link-x ${cls || ""}" href="${PERFIL_X}" target="_blank" rel="noopener noreferrer" aria-label="Perfil @wasmorf1 no X"><span class="x-letra">X</span><span>@wasmorf1</span></a>`;
@@ -4444,6 +4672,13 @@ const WIKI = [
   <h4>Como subir o estágio</h4><ul><li><b>Golpes de crítico alto</b> (+1): ${CRIT_ALTO.filter(k => GOLPES[k]).map(k => GOLPES[k].nome + " (" + NOMES_TIPOS[GOLPES[k].tipo] + ")").join(", ")}.</li><li><b>Lupa do Naturalista</b>, item segurado (+1).</li><li><b>Foco Afiado</b>, golpe de status (+2): vale até a criatura sair de campo ou a batalha acabar. Usar de novo não soma. É ensinado pelo Pergaminho de Técnica ${typeof numPT === "function" ? numPT("focoafiado") : ""}, criado na Bancada de Técnicas.</li></ul>
   <p>Os bônus se somam. Exemplo: Foco Afiado (+2) com um golpe de crítico alto (+1) chega ao estágio 3, e o golpe é crítico sempre.</p>
   <p class="dica">Dica: Olho de Gavião combina muito bem com Foco Afiado ou com a Lupa do Naturalista.</p>` },
+    { g: "Batalha", id: "aprender", t: "Como aprender golpes", h: () => `<p>Cada criatura sabe no máximo <b>4 golpes</b> ao mesmo tempo. Para aprender um quinto, é preciso escolher um para esquecer (ou desistir do novo).</p>
+  <h4>1. Subindo de nível</h4><p>Cada linha evolutiva tem uma lista de golpes por nível. Ao chegar no nível certo, a criatura aprende sozinha; se já souber 4, o jogo pergunta qual esquecer. A lista aparece na ficha da criatura no Caderno de Campo.</p>
+  <h4>2. Pergaminhos de Técnica</h4><p>Criados na <b>Bancada de Técnicas</b> com essências e dinheiro. Não se gastam: ensinam quantas criaturas compatíveis você quiser. Veja <button class="linkbtn" data-wk-ir="pergaminhos">Pergaminhos de Técnica</button>.</p>
+  <h4>3. Golpes de ovo</h4><p>Cada família tem <b>4 golpes de ovo</b> que ela não aprende por nível. Um filhote nascido no <button class="linkbtn" data-wk-ir="bercario">Berçário</button> herda os golpes de ovo que o pai ou a mãe souberem. Se nenhum dos dois souber, o filhote ainda nasce com um golpe de ovo sorteado.</p>
+  <h4>4. Mestra Dona Cotinha (tutora)</h4><p>Ensina <b>${TUTOR.length} golpes especiais</b> que não existem em pergaminho, dois de cada tipo, em troca de dinheiro. Golpes de status custam $2000; os de dano custam de $1500 a $4800, conforme o poder. A criatura precisa ser compatível.</p>
+  <h4>5. Relembrar</h4><p>Na Mestra, aba <b>Relembrar golpes</b>: a criatura recupera, por <b>$${PRECO_LEMBRAR}</b>, qualquer golpe de nível que já poderia saber, inclusive os das formas antes de evoluir.</p>`
+            + `<h4>Golpes da Mestra</h4>` + tabelaHtml(["Golpe", "Tipo", "Preço", "O que faz"], TUTOR.map(g => [`<b>${GOLPES[g].nome}</b>`, chipTipo(GOLPES[g].tipo), "$" + precoTutor(g), descGolpe(GOLPES[g])])) },
     { g: "Batalha", id: "golpes", t: "Efeitos dos golpes", h: () => `<p>O jogo tem <b>${Object.keys(GOLPES).filter(k => k !== "esforco" && !GOLPES[k].supremo).length}</b> golpes. Além do dano, muitos têm efeitos extras. Veja todos na <button class="linkbtn" data-wk-ir="lista-golpes">Lista de golpes</button>.</p>
   <h4>Categorias</h4><ul><li><b>Físico</b>: usa Ataque contra Defesa.</li><li><b>Especial</b>: usa Atq. Esp. contra Def. Esp.</li><li><b>Status</b>: não causa dano; muda atributos, causa problemas de status, cura ou protege.</li></ul>
   <h4>Efeitos</h4>` + tabelaHtml(["Efeito", "Como funciona"], [
@@ -4476,7 +4711,7 @@ const WIKI = [
                 const l = todos.filter(k => GOLPES[k].tipo === t).sort((a, b) => GOLPES[a].nome.localeCompare(GOLPES[b].nome, "pt"));
                 return `<details class="wiki-det"><summary>${chipTipo(t)} <b>${l.length}</b> golpes</summary><div class="gl-lista">` + l.map(k => {
                     const G = GOLPES[k];
-                    return `<div class="gl-item"><b>${G.nome}</b><span class="gl-meta">${NOME_CAT[G.cat]} · ${G.danoFixo != null ? "dano fixo" : G.ohko ? "nocaute" : G.poder ? "Poder " + G.poder : "sem dano"} · ${G.semErro ? "nunca erra" : "Prec " + G.prec} · PP ${G.pp}${G.prioridade ? " · prioridade " + (G.prioridade > 0 ? "+" : "") + G.prioridade : ""}</span><small>${descGolpe(G)}</small></div>`;
+                    return `<div class="gl-item"><b>${G.nome}${G.tutor ? " <span class=\"dica\">(Mestra)</span>" : ""}</b><span class="gl-meta">${NOME_CAT[G.cat]} · ${G.danoFixo != null ? "dano fixo" : G.ohko ? "nocaute" : G.poder ? "Poder " + G.poder : "sem dano"} · ${G.semErro ? "nunca erra" : "Prec " + G.prec} · PP ${G.pp}${G.prioridade ? " · prioridade " + (G.prioridade > 0 ? "+" : "") + G.prioridade : ""}</span><small>${descGolpe(G)}</small></div>`;
                 }).join("") + `</div></details>`;
             }).join("");
         } },
@@ -4491,7 +4726,7 @@ const WIKI = [
     { g: "Criaturas", id: "lendas", t: "Lendárias", h: () => `<p>São criaturas únicas e muito fortes, difíceis de capturar.</p>` + tabelaHtml(["Lendária", "Onde e quando"], [...LENDAS.map(l => [ESP[l.esp].nome, l.dica + (l.requerMissao ? " (depois de resolver o 5º caso do Bando Grilhão)" : " (depois da Insígnia Rocha)")]), ...CHAVES_T.filter(k => LOCAIS[k].lenda).map(k => ["Guardião de " + LOCAIS[k].nome, "Rara (cerca de 1%) no território " + LOCAIS[k].nome])]) },
     { g: "Poderes", id: "despertar", t: "Despertar", h: () => `<p>Transformação temporária que dá +100 nos atributos e às vezes muda o tipo.</p><ul><li>Precisa do item-chave <b>Coração de Arandu</b> (dado pela Líder Jussara).</li><li>A criatura precisa <b>segurar a Gema</b> da própria espécie (aba Despertar do Mercado).</li><li><b>Uma vez por batalha</b> para a equipe toda.</li><li>Dura até o fim da batalha ou até a criatura desmaiar.</li><li>Exceção: o <b>Boitatá</b> não usa Gema, mas precisa saber <b>Chama Ancestral</b>.</li></ul>` + tabelaHtml(["Criatura", "Forma desperta"], Object.keys(ESP).filter(k => ESP[k].despertar && !ESP[k].forma).map(k => [ESP[k].nome, ESP[ESP[k].despertar].tipos.map(chipTipo).join(" ")])) },
     { g: "Poderes", id: "supremo", t: "Golpes Supremos", h: () => `<ul><li>Precisa do item-chave <b>Bracelete de Ressonância</b> (dado pela Líder Tainá).</li><li>A criatura segura um <b>Fragmento Supremo</b> do tipo do golpe, ou um Fragmento exclusivo da espécie.</li><li>No menu de golpes aparece o botão <b>Golpe Supremo</b>.</li><li>Golpes de dano viram golpes de poder 100 a 190 que nunca erram. Golpes de status ganham +1 em todos os atributos.</li><li><b>Uma vez por batalha</b>. Não dá para Despertar e usar Golpe Supremo com a mesma criatura, mas dá com criaturas diferentes.</li></ul>` + tabelaHtml(["Tipo", "Golpe Supremo"], TIPOS.map(t => [chipTipo(t), Z_TIPO[t]])) + tabelaHtml(["Exclusivo", "Precisa saber", "Golpe"], Object.entries(Z_EXCL).map(([k, z]) => [ESP[k].nome, GOLPES[z.base].nome, z.nome])) },
-    { g: "Poderes", id: "pergaminhos", t: "Pergaminhos de Técnica", h: () => `<p>Ensinam golpes que a criatura não aprende por nível. Não se gastam: um pergaminho ensina quantas criaturas você quiser.</p><ul><li>São criados na <b>Bancada de Técnicas</b> com <b>essências</b> (ganhas ao derrotar ou capturar criaturas, do tipo delas) e dinheiro.</li><li>Criaturas sempre aprendem golpes do próprio tipo. Golpes Normal e de status quase todas aprendem. De outros tipos, só algumas linhas evolutivas.</li><li>Cada ginásio vencido dá o pergaminho mais forte do seu tipo.</li><li>Para ensinar: resumo da criatura, <b>Ensinar técnica</b>.</li><li>Na Bancada, as abas separam os pergaminhos por tipo; a aba <b>Meus pergaminhos</b> mostra os que você já criou.</li><li>Todos os golpes da <button class="linkbtn" data-wk-ir="lista-golpes">Lista de golpes</button> podem virar pergaminho.</li></ul><p>Existem ${PTS.length} pergaminhos.</p>` },
+    { g: "Poderes", id: "pergaminhos", t: "Pergaminhos de Técnica", h: () => `<p>Ensinam golpes que a criatura não aprende por nível. Não se gastam: um pergaminho ensina quantas criaturas você quiser.</p><ul><li>São criados na <b>Bancada de Técnicas</b> com <b>essências</b> (ganhas ao derrotar ou capturar criaturas, do tipo delas) e dinheiro.</li><li>Criaturas sempre aprendem golpes do próprio tipo. Golpes Normal e de status quase todas aprendem. De outros tipos, só algumas linhas evolutivas.</li><li>Cada ginásio vencido dá o pergaminho mais forte do seu tipo.</li><li>Para ensinar: resumo da criatura, <b>Ensinar técnica</b>.</li><li>Na Bancada, as abas separam os pergaminhos por tipo; a aba <b>Meus pergaminhos</b> mostra os que você já criou.</li><li>Quase todos os golpes da <button class="linkbtn" data-wk-ir="lista-golpes">Lista de golpes</button> podem virar pergaminho. Os únicos que não viram são os ${TUTOR.length} golpes especiais da Mestra Dona Cotinha.</li></ul><p>Existem ${PTS.length} pergaminhos.</p>` },
     { g: "Itens", id: "itens-cura", t: "Itens de cura", h: () => listaItens("cura") },
     { g: "Itens", id: "itens-batalha", t: "Itens de batalha", h: () => `<p>Usados durante a batalha, sobem um atributo em 2 estágios até o fim dela.</p>` + listaItens("batalha") },
     { g: "Itens", id: "itens-segurar", t: "Itens segurados", h: () => `<p>Cada criatura segura um item por vez. Escolha no resumo da criatura, no campo <b>Segurando</b>.</p>` + listaItens("segurar") },
@@ -4501,6 +4736,8 @@ const WIKI = [
     { g: "Lugares", id: "territorios", t: "Territórios Selvagens", h: () => `<p>São ${CHAVES_T.length} regiões além do vale, do nível 4 ao 100. Cada território abre quando sua criatura mais forte chega perto do nível dele. Criaturas de nível alto já aparecem evoluídas.</p>` + tabelaHtml(["Território", "Níveis", "Espécies"], CHAVES_T.map(k => [LOCAIS[k].nome, LOCAIS[k].niveis.join("–"), LOCAIS[k].especies.length])) },
     { g: "Lugares", id: "centro", t: "Centro de Cura", h: () => `<ul><li><b>Balcão</b>: a Enfermeira Graça cura HP, PP e status de toda a equipe, de graça.</li><li><b>Terminal de Guarda</b>: guarda até ${NCAIXAS * TAMCAIXA} criaturas em ${NCAIXAS} caixas.</li><li><b>Mercado</b>: vende itens por categoria.</li><li><b>Café da Graça</b>: Pão de Queijo (cura 35 HP) e Cafezinho (+3 de amizade para a equipe, a cada 10 minutos).</li><li><b>Varanda</b>: deitar na rede dá +5 de amizade para a equipe, a cada 30 minutos.</li></ul>` },
     { g: "Lugares", id: "terminal", t: "Terminal de Guarda", h: () => `<ul><li>${NCAIXAS} caixas com ${TAMCAIXA} vagas cada. Dá para renomear as caixas.</li><li><b>Mover</b>: toque em uma criatura, depois em Mover, depois na vaga de destino (se estiver ocupada, as duas trocam de lugar).</li><li>Ordene por nível, nome ou tipo.</li><li>A equipe precisa ter pelo menos uma criatura.</li><li>Soltar na natureza é definitivo.</li></ul>` },
+    { g: "Lugares", id: "bercario", t: "Berçário da Vó Nena", h: () => `<ul><li>Deixe <b>duas criaturas da mesma linha evolutiva</b> (por exemplo, uma forma inicial e uma evoluída). Lendárias não entram.</li><li>A cada <b>${PASSOS_OVO} batalhas</b> (qualquer batalha, até fugas) aparece um ovo. Cabem até ${MAX_OVOS} ovos.</li><li>Busque o ovo no Berçário. Ele vai com você e <b>choca depois de ${BATALHAS_CHOCAR} batalhas</b>, ao fim de uma batalha.</li><li>O filhote nasce na <b>forma inicial</b> da família, no <b>nível 5</b>, com amizade alta. Vai para a equipe ou, se ela estiver cheia, para o Terminal.</li><li><b>Herança</b>: 3 atributos de Talento vêm do pai ou da mãe; o temperamento tem 50% de chance de vir de um deles; os <b>golpes de ovo</b> que eles souberem passam para o filhote.</li><li>O filhote também pode nascer com cores raras.</li><li>As criaturas deixadas no Berçário ficam guardadas lá (não sobem de nível) até você retirar.</li></ul>` },
+    { g: "Lugares", id: "mestra", t: "Mestra Dona Cotinha", h: () => `<p>Tutora de golpes. Tem duas abas:</p><ul><li><b>Golpes da Mestra</b>: ${TUTOR.length} golpes especiais que não existem em pergaminho. Pague e a criatura aprende na hora (se for compatível).</li><li><b>Relembrar golpes</b>: por $${PRECO_LEMBRAR}, a criatura lembra um golpe de nível que já poderia saber.</li></ul><p>Detalhes em <button class="linkbtn" data-wk-ir="aprender">Como aprender golpes</button>.</p>` },
     { g: "Lugares", id: "feira", t: "Feira de Trocas", h: () => `<p>O Seu Bento leva uma criatura e devolve. Algumas espécies evoluem ao serem trocadas. A troca também dá +3 de amizade.</p>` },
     { g: "Progresso", id: "ginasios", t: "Liga de Ginásios", h: () => `<p>Os ginásios abrem em ordem. Cada vitória dá insígnia, dinheiro e o Pergaminho mais forte do tipo.</p>` + tabelaHtml(["Nº", "Ginásio", "Tipo", "Líder", "Níveis"], GINASIOS.map(g => [g.ordem, g.lugar, chipTipo(g.tipo), g.nome, Math.min(...g.equipe.map(e => e[1])) + "–" + Math.max(...g.equipe.map(e => e[1]))])) },
     { g: "Progresso", id: "grilhao", t: "Bando Grilhão", h: () => `<p>Quadrilha que trafica criaturas raras. A investigação tem 5 casos, que abrem conforme suas insígnias.</p>` + tabelaHtml(["Caso", "Lugar", "Insígnias"], MISSOES.map((m, i) => [(i + 1) + ". " + m.titulo, m.local, m.req])) + `<p>Ao final, o Projeto Quimera libera a lendária Quimerion.</p>` },
@@ -4681,7 +4918,9 @@ function registroHtml(k) {
     ${c ? `<div class="ficha"><div><span class="rot">Altura</span><b>${String(f[0]).replace(".", ",")} m</b></div><div><span class="rot">Peso</span><b>${String(f[1]).replace(".", ",")} kg</b></div><div><span class="rot">Habitat</span><b style="font-family:var(--corpo);font-size:12.5px">${f[2]}</b></div></div>
       <p style="margin:0;font-size:14px">${e.desc}</p><div style="display:flex;flex-direction:column;gap:5px">${barras}</div>`
         : `<p class="dica">Registro incompleto. Capture um ${e.nome} para anotar altura, peso, habitat, atributos e a descrição.</p>`}
-    ${cadeiaHtml(k)}</div>`;
+    ${cadeiaHtml(k)}
+    ${c ? `<details class="wiki-det"><summary><b>Golpes por nível</b></summary><div class="gl-lista">${(APRENDE[e.linha] || []).filter(x => GOLPES[x[1]]).map(([n, g]) => `<div class="gl-item"><b>Nv ${n} · ${GOLPES[g].nome} ${chipTipo(GOLPES[g].tipo)}</b><small>${descGolpe(GOLPES[g])}</small></div>`).join("")}</div></details>
+    ${(OVO_GOLPES[e.linha] || []).length ? `<details class="wiki-det"><summary><b>Golpes de ovo</b></summary><div class="gl-lista">${OVO_GOLPES[e.linha].map(g => `<div class="gl-item"><b>${GOLPES[g].nome} ${chipTipo(GOLPES[g].tipo)}</b><small>${descGolpe(GOLPES[g])}</small></div>`).join("")}</div></details>` : ""}` : ""}</div>`;
 }
 function cadeiaHtml(k) {
     const linha = ORDEM.filter(x => ESP[x].linha === ESP[k].linha);
