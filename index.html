@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#070c1f">
 <meta name="description" content="Elementais: aventura de criaturas por turnos inspirada na fauna e nas lendas do Brasil.">
 <title>Elementais</title>
@@ -298,6 +298,12 @@ button:focus-visible{outline:3px solid var(--ipe);outline-offset:2px}
 .sel-cri small{display:block;font-weight:400;color:var(--suave);font-size:11px}
 .evo-pop svg{width:100%;height:100%;animation:evoPop .6s ease-out}
 @keyframes evoPop{0%{transform:scale(.4);filter:brightness(4)}100%{transform:scale(1);filter:none}}
+/* celular: sem zoom de toque duplo e sem pulos */
+html,body{touch-action:manipulation;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+button,a,input,select,textarea,label,.msg,.op,.membro,[role=button]{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+input,select,textarea{font-size:16px!important}
+.menu{min-height:120px}
+html{overflow-anchor:none}
 .vazio{border:1px dashed var(--linha);border-radius:10px;min-height:66px;display:grid;place-items:center;color:var(--suave);font-size:12px}
 .barra{height:7px;background:#0b141d;border-radius:4px;overflow:hidden;margin-top:4px}
 .barra i{display:block;height:100%;width:100%;background:var(--hp-ok);transition:width .5s ease, background-color .3s}
@@ -1455,6 +1461,24 @@ function aplicarEvolucao(c, para) { var _a; if (c.rara) {
 } const hpA = stats(c).hp; c.esp = para; c.hp = Math.max(0, c.hp + stats(c).hp - hpA); S.capturados[para] = 1; S.vistos[para] = 1; delete c.evoluir; }
 const $ = s => document.querySelector(s);
 const app = $("#app"), camada = $("#camada");
+// evita que a tela "pule" ao redesenhar: segura a altura até o novo conteúdo aparecer
+(function () {
+    try {
+        const d = Object.getOwnPropertyDescriptor(Element.prototype, "innerHTML");
+        if (!d || !d.set)
+            return;
+        let raf = 0;
+        Object.defineProperty(app, "innerHTML", { configurable: true, get() { return d.get.call(app); }, set(v) {
+                const hgt = app.offsetHeight;
+                if (hgt)
+                    app.style.minHeight = hgt + "px";
+                d.set.call(app, v);
+                cancelAnimationFrame(raf);
+                raf = requestAnimationFrame(() => { raf = requestAnimationFrame(() => { app.style.minHeight = ""; }); });
+            } });
+    }
+    catch (e) { }
+})();
 function aviso(t) { const d = document.createElement("div"); d.className = "aviso"; d.textContent = t; document.body.appendChild(d); setTimeout(() => d.remove(), 2200); }
 const corHp = p => p > .5 ? "var(--hp-ok)" : p > .2 ? "var(--hp-meio)" : "var(--hp-baixo)";
 const barraHp = (c) => { const m = stats(c).hp, p = c.hp / m; return `<div class="barra"><i style="width:${p * 100}%;background:${corHp(p)}"></i></div>`; };
@@ -2741,7 +2765,10 @@ async function encerrar(res) {
     dizer(res === "derrota" ? "Sua equipe foi recuperada." : "Batalha encerrada.");
     menu(`<button class="op principal largo" id="voltar">${B.voltar === telaGrilhao ? "Voltar ao caso" : B.voltar === telaGinasios ? "Voltar à Liga" : B.voltar ? "Voltar aos territórios" : "Voltar ao mapa"}</button>`);
     $("#voltar").onclick = B.voltar || telaHub;
-    $("#voltar").focus();
+    try {
+        $("#voltar").focus({ preventScroll: true });
+    }
+    catch (e) { }
 }
 async function evoluir(c) {
     const para = c.evoluir, el = $("#sprJog");
@@ -2857,7 +2884,10 @@ async function evoluirFora(c, para, intro) {
     m.textContent = `Parabéns! ${antes} evoluiu para ${ESP[para].nome}!`;
     $("#evoAcoes").innerHTML = `<button class="btn" id="evoOk">Continuar</button>`;
     $("#evoOk").onclick = () => { fechar(); telaHub(); };
-    $("#evoOk").focus();
+    try {
+        $("#evoOk").focus({ preventScroll: true });
+    }
+    catch (e) { }
 }
 function feiraTrocas() {
     modal(`<h3 style="margin:0 0 4px;font-family:var(--display);font-weight:400">Feira de Trocas</h3>
