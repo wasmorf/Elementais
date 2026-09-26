@@ -304,6 +304,9 @@ button,a,input,select,textarea,label,.msg,.op,.membro,[role=button]{touch-action
 input,select,textarea{font-size:16px!important}
 .menu{min-height:120px}
 html{overflow-anchor:none}
+.hall-fila{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.hall-fila .mini{width:56px;height:56px;background:var(--painel2);border-radius:10px;padding:3px}
+.hall-fila .mini svg{width:100%;height:100%}
 .vazio{border:1px dashed var(--linha);border-radius:10px;min-height:66px;display:grid;place-items:center;color:var(--suave);font-size:12px}
 .barra{height:7px;background:#0b141d;border-radius:4px;overflow:hidden;margin-top:4px}
 .barra i{display:block;height:100%;width:100%;background:var(--hp-ok);transition:width .5s ease, background-color .3s}
@@ -1528,6 +1531,7 @@ function telaHub() {
       ${Object.entries(LOCAIS).filter(([, l]) => !l.gerada).map(([k, l]) => { const bl = l.requer && !S.insignias.includes(l.requer); return `<div class="local"><h3>${l.nome}</h3><p>${l.desc} Nv ${l.niveis[0]}–${l.niveis[1]}${bl ? " · precisa da " + l.requer : ""}</p><div class="acao"><button class="btn" data-loc="${k}" ${bl ? "disabled" : ""}>Explorar</button></div></div>`; }).join("")}
       <div class="local" style="background:linear-gradient(90deg,#1f3a2c,var(--painel2))"><h3>Territórios Selvagens</h3><p>${CHAVES_T.length} regiões além do vale com ${Object.values(ESP).filter(e => e.gerada).length} espécies para descobrir.</p><div class="acao"><button class="btn" id="territorios">Ver territórios</button></div></div>
       <div class="local" style="background:linear-gradient(90deg,#3a2a12,var(--painel2))"><h3>Liga de Ginásios</h3><p>${GINASIOS.length} líderes, um de cada tipo · ${S.insignias.length} insígnias conquistadas.</p><div class="acao"><button class="btn" id="liga">Ver ginásios</button></div></div>
+      <div class="local" style="background:linear-gradient(90deg,#1f2a5a,var(--painel2))"><h3>Liga Elemental</h3><p>Conselho dos Quatro e o Campeão, em sequência. ${S.insignias.length >= GINASIOS.length ? (S.liga && S.liga.ativa && S.liga.etapa > 0 ? "<b>Você está no meio da Liga!</b>" : "Aberta para você!") : "Precisa das " + GINASIOS.length + " insígnias."}${S.campeao ? " · Campeã(o)!" : ""}</p><div class="acao"><button class="btn${S.insignias.length >= GINASIOS.length ? "" : " sec"}" id="ligaElem">${S.insignias.length >= GINASIOS.length ? "Entrar" : "Ver"}</button></div></div>
       <div class="local" style="background:linear-gradient(90deg,#2a2230,var(--painel2))"><h3>Bando Grilhão</h3><p>Traficantes de criaturas raras agem no vale · ${((S.grilhao || {}).feitas || []).length} de ${MISSOES.length} casos resolvidos.</p><div class="acao"><button class="btn" id="grilhao">Investigar</button></div></div>
       ${tr}
       <h2 style="margin:10px 0 0">Lendas do Vale</h2>
@@ -1559,6 +1563,7 @@ function telaHub() {
     $("#grilhao").onclick = telaGrilhao;
     $("#liga").onclick = telaGinasios;
     $("#bancada").onclick = telaBancada;
+    $("#ligaElem").onclick = telaLiga;
     $("#mestra").onclick = () => { MES.i = 0; telaMestra(); };
     $("#bercarioBtn").onclick = telaBercario;
     $("#territorios").onclick = telaTerritorios;
@@ -2752,6 +2757,8 @@ async function encerrar(res) {
     if (res === "vitoria" && B.tipo === "treinador" && B.tr.aoVencer)
         await B.tr.aoVencer();
     if (res === "derrota") {
+        if (B.liga)
+            sairDaLiga();
         const perda = S.dinInfinito ? 0 : Math.floor(S.dinheiro / 2);
         S.dinheiro -= perda;
         await falar("Você não tem mais criaturas em condições de lutar...");
@@ -2765,7 +2772,7 @@ async function encerrar(res) {
     S.equipe.forEach(c => delete c.evoluir);
     salvar();
     dizer(res === "derrota" ? "Sua equipe foi recuperada." : "Batalha encerrada.");
-    menu(`<button class="op principal largo" id="voltar">${B.voltar === telaGrilhao ? "Voltar ao caso" : B.voltar === telaGinasios ? "Voltar à Liga" : B.voltar ? "Voltar aos territórios" : "Voltar ao mapa"}</button>`);
+    menu(`<button class="op principal largo" id="voltar">${B.voltar === telaGrilhao ? "Voltar ao caso" : B.voltar === telaLiga ? (res === "derrota" ? "Voltar à Liga" : "Continuar na Liga") : B.voltar === telaGinasios ? "Voltar à Liga" : B.voltar ? "Voltar aos territórios" : "Voltar ao mapa"}</button>`);
     $("#voltar").onclick = B.voltar || telaHub;
     try {
         $("#voltar").focus({ preventScroll: true });
@@ -4113,6 +4120,8 @@ function mercadoHtml() {
 }
 function telaCentro() {
     var _a;
+    if (S.liga && S.liga.ativa && S.liga.etapa > 0)
+        sairDaLiga("Você foi ao Centro de Cura e saiu da Liga. Terá que recomeçar pela Helena.");
     fechar();
     (_a = S.centro) !== null && _a !== void 0 ? _a : (S.centro = {});
     const agora = Date.now(), espera = Math.max(0, 30 * 60000 - (agora - (S.centro.rede || 0))), cafe = Math.max(0, 10 * 60000 - (agora - (S.centro.cafe || 0)));
@@ -4617,6 +4626,159 @@ function telaCodigos() {
     setTimeout(() => { const i = $("#codIn"); if (i)
         i.focus(); }, 50);
 }
+/* ======================= LIGA ELEMENTAL (Conselho dos Quatro + Campeão) ======================= */
+const NIVEL_LIGA_RECOMENDADO = 90;
+function montarMisto(tipos, n, min, max, seed) {
+    const eq = [];
+    for (let i = 0; i < n; i++) {
+        const L = Math.round(min + (max - min) * (n === 1 ? 1 : i / (n - 1)));
+        let tentativa = 0, esc = null;
+        while (tentativa < 8) {
+            const [k] = montarEquipe(tipos[i % tipos.length], 1, L, L, seed + i * 31 + tentativa * 7)[0];
+            if (!eq.some(x => x[0] === k)) {
+                esc = k;
+                break;
+            }
+            tentativa++;
+        }
+        eq.push([esc || montarEquipe(tipos[i % tipos.length], 1, L, L, seed + i)[0][0], L]);
+    }
+    return eq;
+}
+const LIGA = [
+    { id: "liga1", titulo: "Conselheira", nome: "Helena Garoa", tipos: ["gelo", "agua"], bg: "serra", premio: 9000,
+        falas: ["Bem-vinda, bem-vindo à Liga Elemental. Sou Helena, a primeira do Conselho dos Quatro.", "Meu frio congela até a coragem. Vamos ver quanto a sua aguenta!"],
+        dica: "Golpes Elétricos, de Lutador e de Planta. Cuidado com criaturas Voadoras, de Terra, Planta e Dragão.", equipe: montarMisto(["gelo", "agua"], 5, 88, 92, 9101) },
+    { id: "liga2", titulo: "Conselheiro", nome: "Tonhão Pedreira", tipos: ["lutador", "pedra"], bg: "arena", premio: 9500,
+        falas: ["Passou pela Helena? Então chegou a hora do músculo!", "Treino quebrando rocha com a mão desde moleque. Bora!"],
+        dica: "Golpes Psíquicos, Voadores, de Água e de Planta resolvem rápido.", equipe: montarMisto(["lutador", "pedra"], 5, 90, 94, 9202) },
+    { id: "liga3", titulo: "Conselheira", nome: "Dona Zulmira", tipos: ["fantasma", "veneno"], bg: "lenda", premio: 10000,
+        falas: ["Ora, ora... Uma visita. Faz tempo que ninguém chega tão longe.", "Minhas criaturas adoram dormir... e fazer os outros dormirem para sempre."],
+        dica: "Golpes Psíquicos, de Terra e Sombrios. Leve remédios de status, como o Chá de Boldo contra veneno.", equipe: montarMisto(["fantasma", "veneno"], 5, 92, 96, 9303) },
+    { id: "liga4", titulo: "Conselheiro", nome: "Cauã do Trovão", tipos: ["dragao"], bg: "serra", premio: 11000,
+        falas: ["Sou Cauã, o último do Conselho. Os dragões me escolheram, não o contrário.", "Eles não perdoam fraqueza. Mostre que você é digno!"],
+        dica: "Golpes de Gelo (4× em muitos dragões), de Fada e de Dragão. Use Elétrico ou Pedra contra os que também voam.", equipe: montarMisto(["dragao", "dragao", "voador"], 5, 94, 98, 9404) },
+    { id: "liga5", titulo: "Campeão", nome: "Iberê", campeao: true, bg: "lenda", premio: 25000,
+        falas: ["Então é você que venceu o Conselho inteiro.", "Eu também comecei com uma criatura pequena, lá na minha terra. Hoje ela é a mais forte do continente.", "Não vou pegar leve. Esta é a batalha do Campeão!"],
+        dica: "A equipe dele muda conforme o seu inicial: ele sempre leva o inicial que tem vantagem sobre o seu. Troque de criatura conforme a fraqueza de cada uma.", equipe: null }
+];
+function inicialDoJogador() { const ad = S.adotados || {}; return Object.values(ad).find(v => typeof v === "string") || (S.equipe.find(c => ESP[c.esp].inicial) || {}).esp || "tatuchama"; }
+function equipeCampeao() {
+    const meu = inicialDoJogador(), g = GERACOES.find(x => (x.chaves || []).includes(meu)) || GERACOES[0];
+    const tipoMeu = ESP[meu].tipos[0], vence = { planta: "fogo", fogo: "agua", agua: "planta" }[tipoMeu] || "fogo";
+    const rival = (g.chaves || []).find(k => ESP[k].tipos[0] === vence) || g.chaves[0];
+    const complementa = { fogo: "planta", agua: "fogo", planta: "agua" }[vence];
+    const eq = montarMisto(["voador", "psiquico", "terra", complementa, "agua"], 5, 96, 99, 9505);
+    eq.push([finalDe(rival), 100]);
+    return eq;
+}
+function equipeLiga(i) { return LIGA[i].campeao ? equipeCampeao() : LIGA[i].equipe; }
+function liga() { S.liga = S.liga || { etapa: 0, ativa: false }; S.hallDaFama = S.hallDaFama || []; return S.liga; }
+function sairDaLiga(motivo) { const L = liga(); if (L.ativa || L.etapa > 0) {
+    L.ativa = false;
+    L.etapa = 0;
+    salvar();
+    if (motivo)
+        aviso(motivo);
+} }
+async function batalhaLiga(i) {
+    const L = liga(), t = LIGA[i];
+    L.ativa = true;
+    L.etapa = i;
+    salvar();
+    const tr = Object.assign(Object.assign({}, t), { equipe: equipeLiga(i), lider: true, insignia: null, aoVencer: async () => {
+            if (i < LIGA.length - 1) {
+                L.etapa = i + 1;
+                salvar();
+                await falar(`${t.nome}: "Você é bom mesmo. Siga em frente, o próximo está esperando."`, 2200);
+                return;
+            }
+            L.ativa = false;
+            L.etapa = 0;
+            S.campeao = (S.campeao || 0) + 1;
+            S.hallDaFama.push({ data: new Date().toLocaleDateString("pt-BR"), equipe: S.equipe.map(c => ({ esp: c.esp, nivel: c.nivel, rara: !!c.rara })) });
+            salvar();
+            await falar(`${t.nome}: "Incrível... Você é a nova pessoa Campeã da Liga Elemental!"`, 2600);
+            await falar(`Sua equipe entrou para o Salão dos Campeões!`, 2000);
+        } });
+    const inimigos = tr.equipe.map(([e, n]) => { const c = criar(e, n); ATR.forEach(a => c.talento[a] = Math.max(c.talento[a], 26)); c.temp = 0; c.hp = stats(c).hp; return c; });
+    if (!iniciarBatalha({ tipo: "treinador", inimigos, tr, bg: t.bg, voltar: telaLiga, liga: true })) {
+        L.ativa = false;
+        return;
+    }
+    await falar(`${t.titulo} ${t.nome} quer batalhar!`, 1200);
+    for (const f of t.falas)
+        await falar(`${t.nome}: "${f}"`, 2400);
+    await falar(`${t.nome} enviou ${nomeDe(ini())}!`, 1000);
+    await entrar("ini");
+    await entrar("jog");
+    await falar(`Vai, ${nomeDe(jog())}!`, 900);
+    menuPrincipal();
+}
+function usarItemLiga(k, i) {
+    const c = S.equipe[i];
+    if (!c || !(S.mochila[k] > 0) || !podeUsar(ITENS[k], c))
+        return;
+    S.mochila[k]--;
+    const msg = aplicarCura(k, c);
+    salvar();
+    telaLiga();
+    aviso(msg);
+}
+function telaLiga() {
+    fechar();
+    const L = liga(), n = S.insignias.length, lib = n >= GINASIOS.length;
+    const nm = Math.max(...S.equipe.map(c => c.nivel));
+    const emCurso = L.ativa && L.etapa > 0;
+    const curas = Object.keys(ITENS).filter(k => ITENS[k].cat === "cura" && S.mochila[k] > 0);
+    const card = (t, i) => {
+        const eq = equipeLiga(i), nv = eq.map(e => e[1]), feito = emCurso && i < L.etapa, atual = L.ativa ? i === L.etapa : i === 0;
+        return `<div class="terr" style="${feito ? "border-color:var(--ipe)" : atual && lib ? "border-color:#3f7bff" : ""}"><span class="rotulo">${t.campeao ? "Campeão" : (i + 1) + "º do Conselho"}</span><h3>${t.titulo} ${t.nome}</h3>
+      <p>${t.campeao ? "Equipe variada" : t.tipos.filter((x, j, a) => a.indexOf(x) === j).map(chipTipo).join(" ")} · ${eq.length} criaturas · Nv ${Math.min(...nv)}–${Math.max(...nv)}</p>
+      <p class="dica">${t.dica}</p>${feito ? `<span class="feito">Vencido ${ICO.check}</span>` : ""}</div>`;
+    };
+    app.innerHTML = topo() + `<div class="cx-topo"><div><h2 style="font-family:var(--display);font-weight:400;margin:0;font-size:20px">Liga Elemental</h2>
+    <p class="dica">Enfrente o Conselho dos Quatro em sequência e depois o Campeão. Precisa das ${GINASIOS.length} insígnias (você tem ${n}). Recomendado: nível ${NIVEL_LIGA_RECOMENDADO} ou mais (sua criatura mais forte: Nv ${nm}).</p></div>
+    <button class="btn sec" id="lgVoltar">${emCurso ? "Desistir e voltar" : "Voltar ao mapa"}</button></div>
+    ${S.campeao ? `<section class="bloco" style="margin-bottom:12px;background:linear-gradient(90deg,#3a2a12,var(--painel))"><h2>Campeã(o) da Liga ${S.campeao > 1 ? `· ${S.campeao} vitórias` : ""}</h2><p class="dica">Você já venceu a Liga. Pode desafiar de novo quando quiser.</p></section>` : ""}
+    <section class="bloco" style="margin-bottom:12px">
+      ${!lib ? `<div class="vazio">A porta da Liga só abre para quem tem as ${GINASIOS.length} insígnias.</div>`
+        : emCurso ? `<h2>Próximo: ${LIGA[L.etapa].titulo} ${LIGA[L.etapa].nome}</h2><p class="dica">Você não pode voltar ao Centro de Cura agora. Use itens da mochila para cuidar da equipe. Se desistir, sair para o Centro ou perder, terá que começar do primeiro desafiante.</p>
+        <div class="acoes-modal" style="justify-content:flex-start"><button class="btn grande" id="lgProx" style="width:auto">Enfrentar ${LIGA[L.etapa].nome}</button></div>`
+            : `<p class="dica"><b>Atenção:</b> são 5 batalhas seguidas e não dá para voltar ao Centro de Cura entre elas. Leve muitos itens de cura: Restauração Total, Hiperpoção e Raiz da Vida.</p>
+        <div class="acoes-modal" style="justify-content:flex-start"><button class="btn grande" id="lgEntrar" style="width:auto">Entrar na Liga</button></div>`}
+    </section>
+    ${lib && emCurso ? `<section class="bloco" style="margin-bottom:12px"><h2>Sua equipe</h2><div class="territorios">${S.equipe.map((c, i) => {
+        const st = stats(c), p = c.hp / st.hp, us = curas.filter(k => podeUsar(ITENS[k], c));
+        return `<div class="terr"><div style="display:flex;gap:10px;align-items:center"><div class="mini" style="width:52px;height:52px">${arteC(c)}</div><div style="flex:1;min-width:0"><h3>${nomeDe(c)} <span class="nv">Nv ${c.nivel}</span>${chipStatus(c)}</h3><div class="barra"><i style="width:${p * 100}%;background:${corHp(p)}"></i></div><p class="dica">${c.hp}/${st.hp} HP · PP ${c.golpes.map(g => g.pp).join("/")}</p></div></div>
+        ${us.length ? `<select data-usar="${i}" aria-label="Usar item em ${nomeDe(c)}"><option value="">Usar item...</option>${us.map(k => `<option value="${k}">${ITENS[k].nome} (×${S.mochila[k]})</option>`).join("")}</select>` : ""}</div>`;
+    }).join("")}</div></section>` : ""}
+    <div class="territorios">${LIGA.map(card).join("")}</div>
+    ${S.hallDaFama && S.hallDaFama.length ? `<section class="bloco" style="margin-top:12px"><h2>Salão dos Campeões</h2>${S.hallDaFama.slice().reverse().slice(0, 5).map(h => `<div style="margin:8px 0"><span class="rotulo">${h.data}</span><div class="hall-fila">${h.equipe.map(x => `<div class="mini" title="${ESP[x.esp] ? ESP[x.esp].nome : ""} Nv ${x.nivel}">${ESP[x.esp] ? arteC({ rara: x.rara }, x.esp) : ""}</div>`).join("")}</div></div>`).join("")}</section>` : ""}`;
+    $("#lgVoltar").onclick = () => {
+        if (!emCurso) {
+            telaHub();
+            return;
+        }
+        modal(`<h3 style="margin:0 0 8px;font-family:var(--display);font-weight:400">Desistir da Liga?</h3><p class="dica">Você volta ao mapa e, na próxima vez, começa de novo pela Helena.</p><div class="acoes-modal"><button class="btn sec" id="dsNao">Continuar na Liga</button><button class="btn" id="dsSim">Desistir</button></div>`);
+        $("#dsNao").onclick = fechar;
+        $("#dsSim").onclick = () => { sairDaLiga("Você saiu da Liga."); telaHub(); };
+    };
+    const ent = $("#lgEntrar");
+    if (ent)
+        ent.onclick = () => { if (S.equipe.every(c => c.hp <= 0)) {
+            aviso("Sua equipe está sem energia.");
+            return;
+        } liga().etapa = 0; batalhaLiga(0); };
+    const px = $("#lgProx");
+    if (px)
+        px.onclick = () => { if (S.equipe.every(c => c.hp <= 0)) {
+            aviso("Sua equipe está sem energia.");
+            return;
+        } batalhaLiga(L.etapa); };
+    app.querySelectorAll("[data-usar]").forEach(s => s.onchange = () => { if (s.value)
+        usarItemLiga(s.value, +s.dataset.usar); });
+}
 /* ======================= TELA INICIAL ======================= */
 const PERFIL_X = "https://x.com/wasmorf1?s=11";
 const linkPerfil = (cls) => `<a class="link-x ${cls || ""}" href="${PERFIL_X}" target="_blank" rel="noopener noreferrer" aria-label="Perfil @wasmorf1 no X"><span class="x-letra">X</span><span>@wasmorf1</span></a>`;
@@ -4907,6 +5069,10 @@ const WIKI = [
     { g: "Lugares", id: "mestra", t: "Mestra Dona Cotinha", h: () => `<p>Tutora de golpes. Tem duas abas:</p><ul><li><b>Golpes da Mestra</b>: ${TUTOR.length} golpes especiais que não existem em pergaminho. Pague e a criatura aprende na hora (se for compatível).</li><li><b>Relembrar golpes</b>: por $${PRECO_LEMBRAR}, a criatura lembra um golpe de nível que já poderia saber.</li></ul><p>Detalhes em <button class="linkbtn" data-wk-ir="aprender">Como aprender golpes</button>.</p>` },
     { g: "Lugares", id: "feira", t: "Feira de Trocas", h: () => `<p>O Seu Bento leva uma criatura e devolve. Algumas espécies evoluem ao serem trocadas. A troca também dá +3 de amizade.</p>` },
     { g: "Progresso", id: "ginasios", t: "Liga de Ginásios", h: () => `<p>Os ginásios abrem em ordem. Cada vitória dá insígnia, dinheiro e o Pergaminho mais forte do tipo.</p>` + tabelaHtml(["Nº", "Ginásio", "Tipo", "Líder", "Níveis"], GINASIOS.map(g => [g.ordem, g.lugar, chipTipo(g.tipo), g.nome, Math.min(...g.equipe.map(e => e[1])) + "–" + Math.max(...g.equipe.map(e => e[1]))])) },
+    { g: "Progresso", id: "liga", t: "Liga Elemental", h: () => `<p>O desafio final. Abre quando você tem as <b>${GINASIOS.length} insígnias</b>. Recomendado: criaturas no <b>nível ${NIVEL_LIGA_RECOMENDADO}</b> ou mais.</p>
+  <ul><li>São <b>5 batalhas em sequência</b>: os quatro do Conselho e, por último, o Campeão.</li><li><b>Não dá para ir ao Centro de Cura</b> entre as batalhas. Entre uma luta e outra, na tela da Liga, você pode usar itens de cura da mochila em cada criatura.</li><li>Se perder, desistir ou entrar no Centro de Cura, a Liga recomeça pelo primeiro desafiante.</li><li>Leve muitos itens: <b>Restauração Total</b>, <b>Hiperpoção</b>, <b>Raiz da Vida</b> e remédios de status.</li><li>Ao vencer o Campeão, sua equipe entra para o <b>Salão dos Campeões</b>. Dá para desafiar a Liga de novo quantas vezes quiser.</li></ul>`
+            + tabelaHtml(["Desafiante", "Tipos", "Níveis", "Dica"], LIGA.map((t, i) => { const eq = equipeLiga(i), nv = eq.map(e => e[1]); return [`<b>${t.titulo} ${t.nome}</b>`, t.campeao ? "variados" : t.tipos.filter((x, j, a) => a.indexOf(x) === j).map(chipTipo).join(" "), Math.min(...nv) + "–" + Math.max(...nv), t.dica]; }))
+            + `<p>O <b>Campeão Iberê</b> leva uma criatura Voadora, uma Psíquica, uma de Terra, uma de Água, uma que cobre a fraqueza do inicial dele e, por último, a forma final do inicial que tem vantagem de tipo sobre o seu.</p>` },
     { g: "Progresso", id: "grilhao", t: "Bando Grilhão", h: () => `<p>Quadrilha que trafica criaturas raras. A investigação tem 5 casos, que abrem conforme suas insígnias.</p>` + tabelaHtml(["Caso", "Lugar", "Insígnias"], MISSOES.map((m, i) => [(i + 1) + ". " + m.titulo, m.local, m.req])) + `<p>Ao final, o Projeto Quimera libera a lendária Quimerion.</p>` },
     { g: "Progresso", id: "caderno", t: "Caderno de Campo", h: () => `<p>Registra as ${ORDEM.length} espécies. Ver uma criatura anota nome e tipo; capturar completa a ficha (altura, peso, habitat, atributos e linha evolutiva). Tem busca, filtro por tipo e páginas.</p>` + tabelaHtml(["Meta", "Prêmio"], PREMIOS.map(p => [p.n ? p.n + " capturadas" : "Todas as espécies", p.texto])) },
     { g: "Progresso", id: "dinheiro", t: "Dinheiro", h: () => `<ul><li>Cada criatura derrotada dá nível × 8 (1,5× de treinadores, 3× de lendárias).</li><li>Treinadores e líderes pagam um prêmio extra.</li><li>Casos do Bando Grilhão e prêmios do Caderno também dão dinheiro.</li><li>A Moeda da Sorte dobra os ganhos em batalha.</li><li>Perder uma batalha custa metade do dinheiro.</li></ul>` },
