@@ -869,15 +869,18 @@ function artJaraca(v = 0, mangue) {
     s += C(40, 80, 2.4, mancha, NS) + C(56, 84, 2.4, mancha, NS) + C(72, 80, 2.4, mancha, NS) + C(48, 70, 2, mancha, NS) + C(64, 70, 2, mancha, NS);
     s += P("M44 70C38 60 34 52 36 44L47 44C47 52 50 60 57 66Z", c2);
     if (v) {
-        s += E(39, 46, 16, 15, "#2f3a22") + P("M32 44L39 56L46 44", "none", `stroke="${mancha}" stroke-width="2.4"`);
+        s += P("M36 28C20 30 16 50 26 62C32 58 36 56 40 58C44 56 48 58 54 62C62 50 56 30 42 28Z", "#2f3a22") + P("M28 44C30 36 36 34 40 36M50 44C48 36 42 34 40 36", "none", `stroke="${mancha}" stroke-width="2.2"`) + C(30, 50, 2.4, mancha, NS) + C(50, 50, 2.4, mancha, NS);
+        s += E(78, 72, 10, 6, c1) + P("M86 70L94 64L92 72L98 72L90 76Z", "#c9b27a");
     }
     s += P("M24 42L17 42M17 42L14 39M17 42L14 45", "none", 'stroke="#d8343a" stroke-width="1.6"');
     s += E(35, 40, 12, 9, cab);
     s += P("M30 34L40 32", "none", 'stroke-width="1.6"');
     if (mangue)
         s += P("M38 32L46 22L48 34Z", "#7fd6d0") + P("M64 62L72 56L72 66Z", "#7fd6d0");
+    if (v)
+        s += P("M30 33L27 25L34 32Z", "#e8d9b0") + P("M38 32L40 24L43 32Z", "#e8d9b0") + P("M26 46L27 51L29 46", "#fff");
     s += olho(31, 39, 3.2, v ? "#c98a10" : "#6b1d1d");
-    return moldura(v ? 1.02 : .84, s);
+    return moldura(v ? 1.08 : .84, s);
 }
 const coroa = (cx, cy, r1, r2, n, c) => { let d = ""; for (let i = 0; i < n * 2; i++) {
     const a = Math.PI * i / n, r = i % 2 ? r2 : r1;
@@ -894,6 +897,8 @@ function artCalango(v) {
     s += P("M44 64L48 72M54 62L58 71M64 64L67 72", "none", `stroke="${faixa}" stroke-width="2.4"`);
     if (v >= 1)
         s += P("M40 62L44 53L48 61L52 51L56 61L60 52L64 62Z", faixa);
+    if (v === 1)
+        s += P("M34 50C30 36 40 34 46 44C50 40 56 46 50 54C58 56 56 66 46 64C48 72 40 76 36 70Z", faixa) + P("M38 52L44 46M40 58L50 54M40 64L48 66", "none", 'stroke="#fff3c0" stroke-width="1.4"');
     s += P("M14 66C14 58 22 54 32 55C40 56 42 62 40 68C38 74 28 76 20 74C16 73 14 70 14 66Z", corpo);
     if (v >= 1)
         s += P("M36 57L44 48L42 61Z", faixa);
@@ -907,7 +912,9 @@ function artMico(v) {
     let s = P("M66 74C84 76 94 66 92 50C90 42 84 44 86 50C88 60 82 68 66 68Z", "#e08a1e");
     s += E(46, 86, 5, 4, escuro) + E(62, 86, 5, 4, escuro);
     s += E(54, 72, 15, 14, pelo);
-    s += coroa(38, 52, 19, 14, 11, "#f4a93a");
+    s += v ? coroa(38, 52, 26, 17, 13, "#d98a1a") + coroa(38, 52, 20, 15, 11, "#f4b33a") : coroa(38, 52, 19, 14, 11, "#f4a93a");
+    if (v)
+        s += C(88, 48, 6, "#c8701a");
     s += E(36, 55, 9, 10, "#5a3a2a");
     s += olho(32, 53, 2.8) + olho(40, 53, 2.8);
     s += P("M34 60Q36 62 38 60", "none", 'stroke="#f3d9a6" stroke-width="1.4"');
@@ -928,8 +935,10 @@ function artGuara(v) {
         s += P("M46 56L48 65L50 56M54 55L56 66L58 55M62 56L63 63L65 57", "#eaf8ff");
     s += P("M30 43L27 27L37 41Z", pelo) + P("M36 43L41 29L43 45Z", pelo);
     s += E(31, 50, 10, 8, pelo) + P("M23 49L11 53L23 57Z", pelo) + C(11, 53, 1.8, "#1f1830", NS);
+    if (v)
+        s += P("M26 42L24 30L30 40L33 26L36 40L42 32L38 44Z", "#dff6ff") + P("M40 58L36 70L44 62L46 74L50 62L56 70L54 58Z", "#eaf8ff") + estrela(84, 54, 3.4, "#fff") + estrela(92, 62, 2.4, "#dff6ff");
     s += olho(28, 48, 3);
-    return moldura(v ? 1.04 : .84, s);
+    return moldura(v ? 1.08 : .84, s);
 }
 function artPreguica() {
     let s = E(50, 90, 22, 4, "#e04f86", `${NS} opacity=".3"`);
@@ -3106,7 +3115,7 @@ function hexHsl(hex) {
 }
 const MATIZ = {};
 TIPOS.forEach(t => MATIZ[t] = hexHsl(COR_TIPO[t]));
-const hsl = (h, s, l) => `hsl(${Math.round(((h % 360) + 360) % 360)} ${Math.max(0, Math.min(100, Math.round(s)))}% ${Math.max(0, Math.min(100, Math.round(l)))}%)`;
+const hsl = (h, s, l) => `hsl(${Math.round(((h % 360) + 360) % 360)},${Math.max(0, Math.min(100, Math.round(s)))}%,${Math.max(0, Math.min(100, Math.round(l)))}%)`;
 // ---------- Territórios ----------
 const TERRITORIOS = [
     ["Vereda dos Buritis", "Palmeiras altas e água rasa entre o capim."], ["Campo de Murundus", "Montinhos de terra cobertos de flores."],
@@ -3243,7 +3252,8 @@ const ANC = { quad: { cab: [28, 52, 12], dorso: [56, 53], cauda: [94, 48], corpo
     ave: { cab: [36, 44, 13], dorso: [58, 46], cauda: [90, 58], corpo: [52, 62, 20, 20] }, peixe: { cab: [24, 58, 10], dorso: [52, 44], cauda: [94, 52], corpo: [46, 64, 30, 16] },
     serpente: { cab: [35, 40, 12], dorso: [62, 62], cauda: [84, 78], corpo: [56, 76, 26, 10] }, inseto: { cab: [38, 63, 12], dorso: [64, 58], cauda: [92, 68], corpo: [70, 68, 18, 10] },
     blob: { cab: [50, 56, 22], dorso: [64, 42], cauda: [80, 80], corpo: [50, 64, 30, 24] }, planta: { cab: [50, 70, 16], dorso: [34, 62], cauda: [70, 86], corpo: [50, 72, 20, 15] },
-    flutuante: { cab: [50, 50, 20], dorso: [66, 36], cauda: [50, 84], corpo: [50, 50, 20, 20] } };
+    flutuante: { cab: [50, 50, 20], dorso: [66, 36], cauda: [50, 84], corpo: [50, 50, 20, 20] },
+    filhote: { cab: [50, 52, 19], dorso: [63, 68], cauda: [70, 80], corpo: [50, 77, 17, 12] } };
 function padrao(G, cx, cy, rx, ry, cor) {
     if (G.pad === "pintas")
         return C(cx - rx * .4, cy - ry * .3, Math.max(1.6, rx * .12), cor, `${NS} opacity=".75"`) + C(cx + rx * .1, cy - ry * .5, Math.max(1.4, rx * .1), cor, `${NS} opacity=".75"`) + C(cx + rx * .45, cy - ry * .05, Math.max(1.5, rx * .11), cor, `${NS} opacity=".75"`);
@@ -3260,7 +3270,58 @@ function orelhas(G, x, y, cor) {
         return E(x - 5, y - 7, 3.6, 11, cor, `transform="rotate(-14 ${x - 5} ${y - 7})"`) + E(x + 5, y - 7, 3.6, 11, cor, `transform="rotate(14 ${x + 5} ${y - 7})"`);
     return "";
 }
+function filhoteArt(G, c, ir, tipos) {
+    const b = G.base;
+    let s = E(50, 89, 21, 3, "#000", `${NS} opacity=".15"`);
+    if (b === "ave")
+        s += P("M34 70C22 66 20 76 30 80Z", c.dark) + P("M66 70C78 66 80 76 70 80Z", c.dark) + P("M64 82L78 80L72 88Z", c.dark);
+    else if (b === "peixe")
+        s += P("M64 74L84 62L81 77L86 90L66 82Z", c.dark) + E(50, 90, 28, 3, "#5cc3f0", `${NS} opacity=".45"`);
+    else if (b === "serpente")
+        s += P("M62 84C82 90 90 76 80 68C76 66 74 72 78 74", "none", 'stroke-width="8"') + P("M62 84C82 90 90 76 80 68C76 66 74 72 78 74", "none", `stroke="${c.main}" stroke-width="5"`);
+    else if (b === "inseto")
+        s += E(66, 68, 9, 5, c.light, 'opacity=".75" transform="rotate(-30 66 68)"') + E(34, 68, 9, 5, c.light, 'opacity=".75" transform="rotate(30 34 68)"');
+    else if (b === "flutuante") {
+        const w = "M42 84Q44 92 40 96M58 84Q56 92 60 96";
+        s += P(w, "none", 'stroke-width="6"') + P(w, "none", `stroke="${c.main}" stroke-width="3.6"`);
+    }
+    else if (G.cauda === "fofa")
+        s += E(70, 76, 7, 10, c.light, 'transform="rotate(40 70 76)"');
+    else if (G.cauda === "fina")
+        s += P("M64 82Q78 82 80 70", "none", 'stroke-width="6"') + P("M64 82Q78 82 80 70", "none", `stroke="${c.main}" stroke-width="3"`);
+    if (!["peixe", "serpente", "flutuante"].includes(b))
+        s += E(41, 88, 5.5, 3.2, c.dark) + E(59, 88, 5.5, 3.2, c.dark);
+    s += E(50, 77, 17, 12, c.main) + E(50, 80, 10, 7, c.belly, NS);
+    if (["quad", "bipede", "blob", "flutuante"].includes(b))
+        s += orelhas(G, 50, 38, c.main);
+    s += C(50, 52, 19, c.main) + (G.pad === "pintas" ? C(38, 44, 2.2, c.dark, `${NS} opacity=".6"`) + C(62, 42, 1.8, c.dark, `${NS} opacity=".6"`) : "");
+    s += olho(42, 53, 5, ir) + olho(58, 53, 5, ir);
+    if (b === "ave")
+        s += P("M46 59L50 66L54 59Z", "#f0b33a");
+    else if (b === "peixe")
+        s += E(50, 61, 3, 1.6, "#b8435a", NS);
+    else
+        s += P("M46 61Q50 64 54 61", "none", 'stroke-width="1.5"');
+    s += bochecha(36, 60) + bochecha(64, 60);
+    if (b === "planta")
+        s += folha(50, 34, -28, .62, "#6cc24a") + folha(50, 34, 24, .55, "#8ad65e");
+    if (b === "inseto")
+        s += P("M44 35C42 28 38 25 35 24M56 35C58 28 62 25 65 24", "none", "") + C(35, 24, 2, c.acc) + C(65, 24, 2, c.acc);
+    if (b === "serpente" || b === "peixe")
+        s += P("M44 34L50 28L56 34Z", c.acc);
+    return s;
+}
+function juba(A, cor) {
+    const [x, y, r] = A.cab;
+    let s = "";
+    for (let i = 0; i < 10; i++) {
+        const a = Math.PI * 2 * i / 10, a2 = a + Math.PI / 10;
+        s += P(`M${(x + Math.cos(a - .25) * (r + 1)).toFixed(1)} ${(y + Math.sin(a - .25) * (r + 1)).toFixed(1)}L${(x + Math.cos(a2) * (r + 8)).toFixed(1)} ${(y + Math.sin(a2) * (r + 8)).toFixed(1)}L${(x + Math.cos(a + .45) * (r + 1)).toFixed(1)} ${(y + Math.sin(a + .45) * (r + 1)).toFixed(1)}Z`, cor);
+    }
+    return s;
+}
 const PLANOS = {
+    filhote: (G, c, ir, f, tipos) => filhoteArt(G, c, ir, tipos),
     quad(G, c, ir) {
         let s = "";
         if (G.cauda === "fina")
@@ -3359,22 +3420,63 @@ const DECO = {
     aco: (A) => { const [x, y] = A.dorso; return ["", E(x, y + 5, 7, 4, "#b8c4ce") + C(x - 4, y + 5, 1.1, "#eef3f6", NS) + C(x + 4, y + 5, 1.1, "#eef3f6", NS)]; },
     fada: (A, f) => { const [x, y, r] = A.cab, t = y - r; return ["", P(`M${x} ${t + 2}L${x - 7} ${t - 3}L${x - 7} ${t + 6}Z`, "#f59ac8") + P(`M${x} ${t + 2}L${x + 7} ${t - 3}L${x + 7} ${t + 6}Z`, "#f59ac8") + estrela(x + r + 5, y - r, 3, "#fff2f8") + (f >= 1 ? estrela(x - r - 6, y, 2.4, "#ffd6f0") : "")]; }
 };
-function artGen(G, st, tipos) {
+// cada estágio de evolução ganha visual próprio (filhote, intermediário, forma final)
+function estagioVisual(G, st) {
+    if (G.leg || G.n <= 1)
+        return { G, dh: 0, ds: 0, dl: 0, fase: "unica" };
+    const final = st === G.n - 1;
+    const ADULTO = { peixe: "serpente", inseto: "flutuante", blob: "bipede", planta: "bipede" };
+    if (st === 0)
+        return { G: Object.assign(Object.assign({}, G), { plano: "filhote", base: G.plano, pad: G.pad === "listras" ? "pintas" : G.pad, chifre: false }), dh: 0, ds: -8, dl: 8, fase: "filhote" };
+    const ADULTO3 = Object.assign(Object.assign({}, ADULTO), { quad: "bipede", bipede: "quad", flutuante: "bipede", serpente: "quad" });
+    if (final)
+        return { G: Object.assign(Object.assign({}, G), { plano: (G.n === 3 ? ADULTO3 : ADULTO)[G.plano] || G.plano, pad: G.pad === "nenhum" ? "listras" : G.pad, chifre: true, orelha: G.orelha === "redonda" ? "pontuda" : G.orelha, cauda: G.cauda === "curta" ? "fofa" : G.cauda }), dh: 28, ds: 14, dl: -8, fase: "final" };
+    return { G: Object.assign(Object.assign({}, G), { pad: G.pad === "nenhum" ? "pintas" : G.pad }), dh: 12, ds: 6, dl: 0, fase: "meio" };
+}
+function crista(A, cor, n) {
+    const [x, y, r] = A.cab;
+    let s = "";
+    const k = n === 1 ? [0] : [-1, 0, 1];
+    for (const i of k) {
+        const bx = x + i * r * .45, by = y - r * .55;
+        s += P(`M${bx - r * .3} ${by + 4}L${bx + i * 4} ${by - r * .8 - (i === 0 ? 10 : 5)}L${bx + r * .3} ${by + 4}Z`, cor);
+    }
+    return s;
+}
+function asasGrandes(A, cor, cor2) {
+    const [dx, dy] = A.dorso;
+    return P(`M${dx - 2} ${dy + 2}C${dx - 16} ${dy - 18} ${dx - 6} ${dy - 34} ${dx + 10} ${dy - 30}C${dx + 6} ${dy - 20} ${dx + 8} ${dy - 8} ${dx + 6} ${dy + 2}Z`, cor)
+        + P(`M${dx + 2} ${dy + 2}C${dx + 12} ${dy - 14} ${dx + 26} ${dy - 26} ${dx + 34} ${dy - 20}C${dx + 26} ${dy - 12} ${dx + 20} ${dy - 2} ${dx + 10} ${dy + 4}Z`, cor2);
+}
+function espinhosDorso(A, cor) { const [dx, dy] = A.dorso; let s = ""; for (let i = -1; i <= 1; i++) {
+    const bx = dx + i * 8, by = dy + 2 - Math.abs(i);
+    s += P(`M${bx - 4} ${by + 4}L${bx + 1} ${by - 7 + Math.abs(i) * 2}L${bx + 4.5} ${by + 4}Z`, cor);
+} return s; }
+function artGen(G0, st, tipos) {
+    const V = estagioVisual(G0, st), G = V.G;
     const K = G.n > 1 ? st / (G.n - 1) : 1, f = G.leg ? 3 : G.n === 1 ? 1 : st + (G.n === 2 && st === 1 ? 1 : 0);
-    const L = G.l - st * 4, c = { main: hsl(G.h, G.s, L), dark: hsl(G.h, G.s, L - 20), light: hsl(G.h, G.s - 12, L + 20), acc: hsl(G.h2, G.s2, G.l2), belly: hsl(G.h, 25, 88) };
+    const L = G.l - st * 4 + V.dl, H = G.h + V.dh, Sa = G.s + V.ds, c = { main: hsl(H, Sa, L), dark: hsl(H, Sa, L - 20), light: hsl(H, Sa - 12, L + 20), acc: hsl(G.h2 + V.dh, G.s2, G.l2), belly: hsl(H, 25, 88) };
     const esc = G.leg ? 1.06 : G.n === 1 ? .94 : .8 + .26 * K, A = ANC[G.plano];
     const ir = tipos.includes("sombrio") ? "#b8321f" : tipos.includes("psiquico") ? "#8a2a6a" : "#1f1830";
     let atras = "", frente = "", chapeu = "";
     for (const t of tipos) {
         const d = DECO[t];
         if (d) {
-            const r = d(A, f, c, G.plano);
+            const r = d(A, f, c, G.base || G.plano);
             atras += r[0] || "";
             frente += r[1] || "";
         }
     }
     if (G.chifre && f >= 1 && !tipos.includes("dragao"))
         frente += chifres(A, "#efe3c6");
+    if (V.fase === "meio")
+        atras = crista(A, c.acc, 1) + atras;
+    if (V.fase === "final" && ["quad", "bipede"].includes(G.plano))
+        atras = juba(A, c.acc) + atras;
+    if (V.fase === "final" && G.plano === "ave")
+        atras = P("M70 64C84 70 96 80 99 94C90 86 80 80 70 74Z", c.acc) + P("M70 60C86 60 98 66 100 78C90 72 80 70 70 68Z", c.light) + atras;
+    if (V.fase === "final")
+        atras = crista(A, c.acc, 3) + (["quad", "bipede", "serpente", "peixe"].includes(G.plano) ? espinhosDorso(A, c.acc) : "") + (["ave", "flutuante"].includes(G.plano) ? asasGrandes(A, c.acc, c.light) : "") + atras;
     if (G.leg) {
         const cor = hsl(G.h2, 70, 62);
         atras = `<circle cx="50" cy="58" r="44" fill="${cor}" opacity=".18" stroke="none"/><circle cx="50" cy="58" r="40" fill="none" stroke="${cor}" stroke-width="1.5" stroke-dasharray="3 6"/>` + atras;
@@ -5045,7 +5147,7 @@ const WIKI = [
     { g: "Batalha", id: "status", t: "Problemas de status", h: () => tabelaHtml(["Status", "Efeito", "Quem é imune", "Cura"], [[`<span class="tipo" style="background:#9a4ac8">ENV</span> Envenenado`, "Perde 1/8 do HP no fim de cada turno. No <b>envenenamento grave</b> o dano começa em 1/16 e cresce a cada turno (volta ao normal se a criatura sair de campo).", "Veneno e Aço", "Chá de Boldo"], [`<span class="tipo" style="background:#d9a910">PAR</span> Paralisado`, "Metade da Velocidade e 25% de chance de não agir.", "Elétrico (e Terra contra golpes de status Elétricos)", "Óleo de Copaíba"], [`<span class="tipo" style="background:#e0632e">QUE</span> Queimado`, "Perde 1/16 do HP por turno e causa metade do dano físico.", "Fogo", "Pomada de Babosa"], [`<span class="tipo" style="background:#6d7fa8">DOR</span> Adormecido`, "Não age por 1 a 3 turnos e depois acorda sozinho.", "Ninguém", "Café Coado Forte"], [`<span class="tipo" style="background:#4fc3e8">CON</span> Congelado`, "Não age. A cada turno tem 20% de chance de descongelar. Ser atingido por um golpe de Fogo descongela na hora.", "Gelo", "Chá de Canela Quente"]]) + `<p>Cada criatura só pode ter um problema de status por vez. O Xarope de Guaraná, a Restauração Total e o Centro de Cura curam todos. Criaturas com status ficam mais fáceis de capturar: 2,5× se adormecidas ou congeladas e 1,5× nos outros casos.</p>
   <h4>Efeitos temporários</h4>` + tabelaHtml(["Efeito", "O que faz", "Quando acaba"], [["Confuso", "1/3 de chance de se machucar em vez de atacar.", "Depois de 1 a 4 turnos ou ao sair de campo."], ["Hesitou", "Perde a vez naquele turno.", "No fim do turno."], ["Preso", "Perde 1/8 do HP por turno.", "Depois de 4 ou 5 turnos ou ao sair de campo."], ["Semente", "Perde 1/8 do HP por turno para o adversário.", "Ao sair de campo."], ["Recarregando", "Perde a vez para recuperar o fôlego.", "No turno seguinte."]]) },
     { g: "Criaturas", id: "captura", t: "Captura e cristais", h: () => `<p>Em batalhas selvagens, abra a <b>Mochila</b> e use um cristal. A chance aumenta quando a criatura está com pouco HP, com problema de status, e depende da espécie (lendárias são bem difíceis).</p>${listaItens("captura")}<p>Com a equipe cheia (6), você escolhe mandar a nova criatura para o Terminal ou trocá-la por alguém da equipe.</p>` },
-    { g: "Criaturas", id: "evolucao", t: "Evolução", h: () => tabelaHtml(["Método", "Como acontece"], [["Nível", "Ao chegar no nível indicado."], ["Pedra ou objeto", "Usando o item de evolução no resumo da criatura."], ["Troca", "Trocando a criatura com o Seu Bento, na Feira de Trocas."], ["Amizade", "Ao subir de nível com amizade 150 ou mais (algumas só de dia ou só à noite)."], ["Local", "Ao subir de nível dentro de um lugar específico."]]) + `<p>O resumo de cada criatura mostra como ela evolui. A <b>Pedra Parada</b>, segurada, impede a evolução.</p>` },
+    { g: "Criaturas", id: "evolucao", t: "Evolução", h: () => `<p>Cada forma de uma família tem <b>visual próprio</b>: o <b>filhote</b> é pequeno, de cabeça grande e olhos enormes; a forma do <b>meio</b> já mostra o corpo da espécie; a <b>forma final</b> é maior e ganha crista, juba, espinhos ou asas grandes, além de cores mais fortes.</p>` + tabelaHtml(["Método", "Como acontece"], [["Nível", "Ao chegar no nível indicado."], ["Pedra ou objeto", "Usando o item de evolução no resumo da criatura."], ["Troca", "Trocando a criatura com o Seu Bento, na Feira de Trocas."], ["Amizade", "Ao subir de nível com amizade 150 ou mais (algumas só de dia ou só à noite)."], ["Local", "Ao subir de nível dentro de um lugar específico."]]) + `<p>O resumo de cada criatura mostra como ela evolui. A <b>Pedra Parada</b>, segurada, impede a evolução.</p>` },
     { g: "Criaturas", id: "amizade", t: "Amizade", h: () => `<p>Vai de 0 a 255. Sobe ao subir de nível (+5), ao vencer batalhas (+2), com Petisco de Buriti (+15), Cafezinho no Centro (+3), rede da varanda (+5), poções e trocas. Cai quando a criatura desmaia (−3). Com 150 ou mais, algumas espécies evoluem.</p>` },
     { g: "Criaturas", id: "diaenoite", t: "Dia e noite", h: () => `<p>O jogo usa o relógio do aparelho: das 6h às 18h é <b>dia</b> (sol no topo), e das 18h às 6h é <b>noite</b> (lua no topo). O céu das batalhas ao ar livre também muda.</p><ul><li>Algumas evoluções por amizade dependem do horário.</li><li>A Curupira só aparece de dia e a Iara só à noite.</li><li>O Cristal Noturno fica 3,5× melhor à noite.</li></ul>` },
     { g: "Criaturas", id: "raras", t: "Cores raras", h: () => `<p>Toda criatura tem 1 chance em 256 de nascer com <b>cores raras</b>, marcada com ${ICO.estrela}. Ela brilha ao entrar em batalha, mas tem os mesmos atributos das outras: a diferença é só a aparência. Com o <b>Amuleto do Ipê</b> (prêmio do Caderno) a chance fica 3× maior.</p>` },
