@@ -296,6 +296,8 @@ button:focus-visible{outline:3px solid var(--ipe);outline-offset:2px}
 .sel-cri.on{border-color:var(--ipe)}
 .sel-cri .mini{width:40px;height:40px;display:block}
 .sel-cri small{display:block;font-weight:400;color:var(--suave);font-size:11px}
+.evo-pop svg{width:100%;height:100%;animation:evoPop .6s ease-out}
+@keyframes evoPop{0%{transform:scale(.4);filter:brightness(4)}100%{transform:scale(1);filter:none}}
 .vazio{border:1px dashed var(--linha);border-radius:10px;min-height:66px;display:grid;place-items:center;color:var(--suave);font-size:12px}
 .barra{height:7px;background:#0b141d;border-radius:4px;overflow:hidden;margin-top:4px}
 .barra i{display:block;height:100%;width:100%;background:var(--hp-ok);transition:width .5s ease, background-color .3s}
@@ -1219,6 +1221,7 @@ const ITENS = {
     // Outros
     paodequeijo: { cat: "cura", nome: "Pão de Queijo", desc: "Recupera 35 HP. Vendido no Café do Centro.", preco: 120, cura: 35, naoVende: true, cor: "#f0c060" },
     petisco: { cat: "outros", nome: "Petisco de Buriti", desc: "Aumenta a amizade de uma criatura.", preco: 200 },
+    rapadura: { cat: "outros", nome: "Rapadura Mágica", desc: "Sobe a criatura 1 nível na hora. Pode fazer aprender golpes e evoluir. Use pelo resumo da criatura.", preco: 4800, cor: "#c8841f" },
     amuleto: { cat: "chave", nome: "Amuleto do Ipê", desc: "Item-chave. Criaturas de cores raras aparecem 3× mais.", preco: 0, chave: true },
     coracao: { cat: "chave", nome: "Coração de Arandu", desc: "Item-chave. Desperta, uma vez por batalha, a criatura que estiver segurando a Gema da sua espécie.", preco: 0, chave: true }
 };
@@ -1266,8 +1269,11 @@ const iconeFrasco = cor => `<svg viewBox="0 0 40 48" aria-hidden="true"><rect x=
 const iconeSache = cor => `<svg viewBox="0 0 40 48" aria-hidden="true"><path d="M10 14L30 14L34 44L6 44Z" fill="${cor}" stroke="#0a1119" stroke-width="2.6" stroke-linejoin="round"/><path d="M10 14C14 7 26 7 30 14" fill="none" stroke="#0a1119" stroke-width="2.4"/><path d="M14 27L26 27" stroke="#fff" stroke-width="2.2" opacity=".7"/></svg>`;
 const iconePingente = cor => `<svg viewBox="0 0 40 48" aria-hidden="true"><path d="M12 4C12 15 28 15 28 4" fill="none" stroke="#0a1119" stroke-width="2.4"/><circle cx="20" cy="29" r="13" fill="${cor}" stroke="#0a1119" stroke-width="2.6"/><circle cx="16" cy="25" r="4" fill="#fff" opacity=".6"/></svg>`;
 const iconeFruta = cor => `<svg viewBox="0 0 40 48" aria-hidden="true"><path d="M20 14C20 9 22 6 25 4" fill="none" stroke="#0a1119" stroke-width="2.4" stroke-linecap="round"/><path d="M21 11C25 5 32 6 33 9C29 13 24 13 21 11Z" fill="#5cb04a" stroke="#0a1119" stroke-width="2"/><circle cx="20" cy="29" r="14" fill="${cor}" stroke="#0a1119" stroke-width="2.6"/><ellipse cx="14.5" cy="23.5" rx="3.6" ry="2.4" fill="#fff" opacity=".45" transform="rotate(-30 14.5 23.5)"/></svg>`;
+const iconeRapadura = `<svg viewBox="0 0 40 48" aria-hidden="true"><path d="M6 18L22 10L35 17L35 33L19 41L6 34Z" fill="#b8641c" stroke="#0a1119" stroke-width="2.6" stroke-linejoin="round"/><path d="M6 18L19 25L35 17M19 25V41" fill="none" stroke="#0a1119" stroke-width="2"/><path d="M8 20L18 25.5V38L8 33Z" fill="#d88a32"/><path d="M27 6L28.6 9.4L32 11L28.6 12.6L27 16L25.4 12.6L22 11L25.4 9.4Z" fill="#ffe27a"/></svg>`;
 function iconeItem(k) {
     const it = ITENS[k] || {};
+    if (k === "rapadura")
+        return iconeRapadura;
     if (it.fruta)
         return iconeFruta(it.cor);
     if (k === "amuleto")
@@ -1337,6 +1343,7 @@ function dadosParaSalvar() {
 function salvar() {
     if (!S)
         return false;
+    garantirDinheiro();
     try {
         localStorage.setItem(CHAVE, dadosParaSalvar());
         falhaSalvar = false;
@@ -1474,8 +1481,9 @@ setInterval(() => {
 }, 30000);
 const LOGO_SVG = `<svg viewBox="0 0 64 64" role="img" aria-label="Logo Elementais"> <defs> <linearGradient id="lgBorda" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff4458"/><stop offset=".5" stop-color="#b04ad8"/><stop offset="1" stop-color="#3f7bff"/></linearGradient> <linearGradient id="lgFundo" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1a2658"/><stop offset="1" stop-color="#070c1f"/></linearGradient> <linearGradient id="lgE" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#cfdcff"/></linearGradient> <linearGradient id="lgFogo" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#ff7a5a"/></linearGradient> <linearGradient id="lgAgua" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#6fa3ff"/></linearGradient> <linearGradient id="lgRaio" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#ffd84d"/></linearGradient> </defs> <path d="M32 2L57 16.5V47.5L32 62L7 47.5V16.5Z" fill="url(#lgBorda)"/> <path d="M32 6.5L53 18.7V45.3L32 57.5L11 45.3V18.7Z" fill="url(#lgFundo)"/> <path d="M32 6.5L53 18.7V45.3L32 57.5L11 45.3V18.7Z" fill="none" stroke="#ffffff" stroke-opacity=".12" stroke-width="1"/> <path d="M11 18.7L32 31L53 18.7M32 31V57.5" stroke="#ffffff" stroke-opacity=".05" stroke-width="1" fill="none"/> <path d="M19 19L25 15V49L19 46Z" fill="url(#lgE)"/> <path d="M25 15H39C41.5 15 42.5 13.2 43 10.8C44.2 12.4 44.6 14 44.3 15.4C45.5 13.9 46.2 11.8 46 9C49.2 11.8 50.2 16 48.2 19.2C47 21 45 21.8 42.5 21.8H25Z" fill="url(#lgFogo)"/> <path d="M25 28.8H34.5V35.2H25Z" fill="url(#lgE)"/> <path d="M37 24.5H43.5L40.2 30H44.5L36.2 40.5L38.4 33.4H35Z" fill="#ffd84d" stroke="#fff3a8" stroke-width=".6" stroke-linejoin="round"/> <path d="M25 42.3H37.5C40.5 42.3 41.8 40.2 44.5 40.2C47.6 40.2 48.8 42.8 47.3 45.3C46.2 47.1 44 48.5 40.8 49H25Z" fill="url(#lgAgua)"/> <path d="M43 44.2Q44.6 42.6 46 44.1" stroke="#070c1f" stroke-width="1.3" fill="none" stroke-linecap="round"/> <circle cx="49" cy="12" r="1.3" fill="#fff"/><circle cx="14" cy="50" r="1" fill="#fff" opacity=".6"/> </svg>`;
 function topo() {
+    garantirDinheiro();
     return `<header class="topo"><div class="marca" id="marcaBtn" role="button" tabindex="0" title="Voltar ao menu inicial" aria-label="Elementais: voltar ao menu inicial"><span class="logo">${LOGO_SVG}</span><h1>Elementais</h1></div>
-  ${S ? `<div class="status">${S.jogador ? `<button class="pil-av" id="cartaoBtn" title="Cartão de Treinador"><span class="mini-av">${avatarSvg(S.jogador)}</span>${S.jogador.nome}</button>` : ""}<span class="pilula">$ <b>${S.dinheiro}</b></span>${astroHtml()}<span class="pilula">Insígnias <b>${S.insignias.length}</b>/${GINASIOS.length}</span><span class="pilula">Capturados <b>${Object.keys(S.capturados).filter(k => ESP[k] && !ESP[k].forma).length}</b>/${Object.values(ESP).filter(e => !e.forma).length}</span></div>` : ""}</header>`;
+  ${S ? `<div class="status">${S.jogador ? `<button class="pil-av" id="cartaoBtn" title="Cartão de Treinador"><span class="mini-av">${avatarSvg(S.jogador)}</span>${S.jogador.nome}</button>` : ""}<span class="pilula">$ <b>${dinTxt()}</b></span>${astroHtml()}<span class="pilula">Insígnias <b>${S.insignias.length}</b>/${GINASIOS.length}</span><span class="pilula">Capturados <b>${Object.keys(S.capturados).filter(k => ESP[k] && !ESP[k].forma).length}</b>/${Object.values(ESP).filter(e => !e.forma).length}</span></div>` : ""}</header>`;
 }
 /* ======================= TELA: ESCOLHA ======================= */
 /* ======================= TELA: MAPA ======================= */
@@ -1518,7 +1526,7 @@ function telaHub() {
 
     </div>
   </div>
-  <footer class="rodape"><nav class="rodape-links"><button id="vertipos">Tabela de tipos</button><button id="verwiki">Wiki</button><button id="vertitulo">Tela inicial</button><button id="vercopia">Cópia do jogo</button><button id="reiniciar">Recomeçar jogo</button></nav><div class="rodape-perfil">${linkPerfil()}</div></footer>`;
+  <footer class="rodape"><nav class="rodape-links"><button id="vertipos">Tabela de tipos</button><button id="verwiki">Wiki</button><button id="vertitulo">Tela inicial</button><button id="vercopia">Cópia do jogo</button><button id="vercodigos">Códigos</button><button id="reiniciar">Recomeçar jogo</button></nav><div class="rodape-perfil">${linkPerfil()}</div></footer>`;
     app.querySelectorAll("[data-loc]").forEach(b => b.onclick = () => encontroSelvagem(b.dataset.loc));
     app.querySelectorAll("[data-lenda]").forEach(b => b.onclick = () => encontroLenda(+b.dataset.lenda));
     app.querySelectorAll("[data-tr]").forEach(b => b.onclick = () => batalhaTreinador(b.dataset.tr));
@@ -1535,6 +1543,7 @@ function telaHub() {
     $("#verwiki").onclick = () => telaWiki(null, telaHub);
     $("#vertitulo").onclick = telaTitulo;
     $("#vercopia").onclick = () => telaCopia();
+    $("#vercodigos").onclick = telaCodigos;
     $("#troca").onclick = feiraTrocas;
     $("#reiniciar").onclick = confirmarReinicio;
 }
@@ -1606,6 +1615,7 @@ function resumo(i) {
     <div class="acoes-modal">${i > 0 ? `<button class="btn sec" id="lider">Colocar na frente</button>` : ""}
       ${S.equipe.length > 1 ? `<button class="btn sec" id="guardar">Guardar no Terminal</button>` : ""}
       ${S.mochila.petisco > 0 ? `<button class="btn sec" id="petisco">Dar petisco</button>` : ""}
+      ${temItem("rapadura") && c.nivel < 100 ? `<button class="btn" id="rapadura">Usar Rapadura Mágica ×${qtdTxt("rapadura")}</button>` : ""}
       ${pedraEvo ? `<button class="btn" id="pedra">Usar ${ITENS[pedraEvo.item].nome}</button>` : ""}
       ${curas.map(k => `<button class="btn sec" data-cura="${k}">${ITENS[k].nome} ×${S.mochila[k]}</button>`).join("")}
       ${Object.keys(ITENS).filter(k => ITENS[k].fruta && S.mochila[k] > 0 && c.hp > 0).map(k => `<button class="btn sec" data-fruta="${k}">Dar ${ITENS[k].nome} ×${S.mochila[k]}</button>`).join("")}
@@ -1620,6 +1630,8 @@ function resumo(i) {
             aviso("O Terminal está cheio.");
             return;
         } S.equipe.splice(i, 1); salvar(); fechar(); telaHub(); aviso(`${e.nome} foi para a caixa ${S.nomesCaixas[cx]} do Terminal.`); };
+    if ($("#rapadura"))
+        $("#rapadura").onclick = () => usarRapadura(i);
     if ($("#petisco"))
         $("#petisco").onclick = () => { S.mochila.petisco--; c.amizade = Math.min(255, c.amizade + 15); salvar(); resumo(i); aviso(`${e.nome} adorou o petisco! Amizade +15.`); };
     if ($("#pedra"))
@@ -2714,10 +2726,10 @@ async function encerrar(res) {
     if (res === "vitoria" && B.tipo === "treinador" && B.tr.aoVencer)
         await B.tr.aoVencer();
     if (res === "derrota") {
-        const perda = Math.floor(S.dinheiro / 2);
+        const perda = S.dinInfinito ? 0 : Math.floor(S.dinheiro / 2);
         S.dinheiro -= perda;
         await falar("Você não tem mais criaturas em condições de lutar...");
-        await falar(`Você correu para o Centro de Cura e perdeu $${perda} no caminho.`);
+        await falar(perda ? `Você correu para o Centro de Cura e perdeu $${perda} no caminho.` : "Você correu para o Centro de Cura.");
         curarTudo();
     }
     await passosBercario();
@@ -4014,7 +4026,7 @@ function telaCartao() {
   <div class="cartao">
     <div class="avatar-grande">${avatarSvg(j)}</div>
     <div><span class="rotulo">${j.titulo} do Vale de Arandu</span><h3 style="font-family:var(--display);font-weight:400;font-size:26px;margin:2px 0 0;color:var(--ipe)">${j.nome}</h3>
-      <dl><dt>Nº de registro</dt><dd>${j.id}</dd><dt>Início da jornada</dt><dd>${j.inicio}</dd><dt>Dinheiro</dt><dd>$${S.dinheiro}</dd>
+      <dl><dt>Nº de registro</dt><dd>${j.id}</dd><dt>Início da jornada</dt><dd>${j.inicio}</dd><dt>Dinheiro</dt><dd>$${dinTxt()}</dd>
       <dt>Caderno de Campo</dt><dd>${capt} capturadas · ${ORDEM.filter(k => S.vistos[k]).length} vistas</dd><dt>Criaturas</dt><dd>${todas().length}</dd>
       <dt>Casos do Grilhão</dt><dd>${((S.grilhao || {}).feitas || []).length}/${MISSOES.length}</dd></dl>
       <span class="rotulo" style="display:block;margin-top:14px">Insígnias ${S.insignias.length}/${GINASIOS.length}</span>
@@ -4065,7 +4077,7 @@ function tocarVinheta() {
 function mercadoHtml() {
     return `<section class="bloco"><h2>Mercado</h2>
     <div class="abas">${CATS.filter(([c]) => (c !== "despertar" || S.mochila.coracao) && (c !== "supremo" || S.mochila.bracelete)).map(([c, n]) => `<button class="aba${MERC === c ? " on" : ""}" data-merc="${c}">${n}</button>`).join("")}</div>
-    <div class="loja">${Object.entries(ITENS).filter(([, it]) => !it.chave && !it.naoVende && it.cat === MERC).map(([k, it]) => `<div class="item"><div class="ic">${iconeItem(k)}</div><div><b>${it.nome}</b> <span class="qtd">×${S.mochila[k] || 0}</span><small>${it.desc} <span class="preco">$${it.preco}</span></small></div><button class="btn sec" data-comprar="${k}" ${S.dinheiro < it.preco ? "disabled" : ""}>Comprar</button></div>`).join("")}</div></section>`;
+    <div class="loja">${Object.entries(ITENS).filter(([, it]) => !it.chave && !it.naoVende && it.cat === MERC).map(([k, it]) => `<div class="item"><div class="ic">${iconeItem(k)}</div><div><b>${it.nome}</b> <span class="qtd">×${qtdTxt(k)}</span><small>${it.desc} <span class="preco">$${it.preco}</span></small></div><button class="btn sec" data-comprar="${k}" ${S.dinheiro < it.preco ? "disabled" : ""}>Comprar</button></div>`).join("")}</div></section>`;
 }
 function telaCentro() {
     var _a;
@@ -4331,7 +4343,7 @@ function telaMestra() {
                 : `<div class="vazio">${e.nome} não tem golpes para lembrar agora.</div>`);
     }
     app.innerHTML = topo() + `<div class="cx-topo"><div><h2 style="font-family:var(--display);font-weight:400;margin:0;font-size:20px">Mestra Dona Cotinha</h2>
-    <p class="dica">"Já ensinei capoeira pra onça e samba pra jacaré. Escolha quem vai aprender." Você tem $${S.dinheiro}.</p></div>
+    <p class="dica">"Já ensinei capoeira pra onça e samba pra jacaré. Escolha quem vai aprender." Você tem $${dinTxt()}.</p></div>
     <button class="btn sec" id="meVoltar">Voltar ao mapa</button></div>
     <section class="bloco">${seletor}${abas}${lista}</section>`;
     $("#meVoltar").onclick = telaHub;
@@ -4451,6 +4463,116 @@ function telaBercario() {
         aviso(`${nomeDe(c)} voltou ${S.equipe.includes(c) ? "para a equipe" : "para o Terminal"}.`);
     });
     app.querySelectorAll("[data-busca]").forEach(b => b.onclick = () => { S.ovos[+b.dataset.busca].buscado = true; salvar(); telaBercario(); aviso("Você pegou o ovo. Ele choca depois de algumas batalhas."); });
+}
+/* ======================= RAPADURA MÁGICA e CÓDIGOS ======================= */
+const DIN_INF = 999999999;
+function garantirDinheiro() { if (S && S.dinInfinito)
+    S.dinheiro = DIN_INF; }
+const dinTxt = () => S && S.dinInfinito ? "∞" : S ? S.dinheiro : 0;
+const temItem = k => (k === "rapadura" && S && S.rcInfinito) || (S && S.mochila[k] > 0);
+const qtdTxt = k => k === "rapadura" && S && S.rcInfinito ? "∞" : (S && S.mochila[k] || 0);
+function aprenderFora(c, g) {
+    return new Promise(res => {
+        const G = GOLPES[g], nm = nomeDe(c);
+        if (!G || c.golpes.some(x => x.id === g))
+            return res();
+        if (c.golpes.length < 4) {
+            c.golpes.push({ id: g, pp: G.pp });
+            aviso(`${nm} aprendeu ${G.nome}!`);
+            return res();
+        }
+        modal(`<h3 style="margin:0 0 4px;font-family:var(--display);font-weight:400">${nm} quer aprender ${G.nome}</h3>
+      <p class="dica" style="margin-bottom:8px">${chipTipo(G.tipo)} ${NOME_CAT[G.cat]}${G.poder ? " · Poder " + G.poder : ""} · ${precTxt(G)}. ${descGolpe(G)}</p>
+      <p class="dica" style="margin-bottom:10px">Ele já sabe 4 golpes. Qual esquecer?</p>
+      <div class="golpes-lista">${c.golpes.map((x, k) => { const H = GOLPES[x.id]; return `<button class="golpe-card" data-esq="${k}" style="border:1px solid var(--linha);text-align:left"><b>${H.nome}</b>${chipTipo(H.tipo)} <span>${H.poder ? "Poder " + H.poder : "status"}</span><small class="gdesc">${descGolpe(H)}</small></button>`; }).join("")}</div>
+      <div class="acoes-modal"><button class="btn sec" id="esqNao">Não aprender ${G.nome}</button></div>`);
+        $("#esqNao").onclick = () => { fechar(); aviso(`${nm} não aprendeu ${G.nome}.`); res(); };
+        camada.querySelectorAll("[data-esq]").forEach(q => q.onclick = () => { const k = +q.dataset.esq, velho = GOLPES[c.golpes[k].id].nome; c.golpes[k] = { id: g, pp: G.pp }; fechar(); aviso(`${nm} esqueceu ${velho} e aprendeu ${G.nome}!`); res(); });
+    });
+}
+async function usarRapadura(i) {
+    const c = S.equipe[i];
+    if (!c || c.nivel >= 100 || !temItem("rapadura"))
+        return;
+    if (!S.rcInfinito)
+        S.mochila.rapadura--;
+    const antes = stats(c).hp;
+    c.nivel++;
+    c.exp = Math.max(c.exp, expPara(c.nivel));
+    if (c.hp > 0)
+        c.hp = Math.min(stats(c).hp, c.hp + stats(c).hp - antes);
+    c.amizade = Math.min(255, c.amizade + 5);
+    salvar();
+    fechar();
+    aviso(`${nomeDe(c)} subiu para o nível ${c.nivel}!`);
+    for (const [n, g] of APRENDE[ESP[c.esp].linha] || [])
+        if (n === c.nivel) {
+            await aprenderFora(c, g);
+            salvar();
+        }
+    const para = evoPorNivel(c);
+    if (para) {
+        const antesNome = nomeDe(c);
+        aplicarEvolucao(c, para);
+        salvar();
+        await new Promise(res => {
+            modal(`<div style="text-align:center"><div style="width:160px;height:160px;margin:0 auto" class="evo-pop">${arteC(c)}</div>
+      <h3 style="font-family:var(--display);font-weight:400;margin:8px 0 4px">Parabéns!</h3><p>${antesNome} evoluiu para <b>${ESP[para].nome}</b>!</p>
+      <div class="acoes-modal" style="justify-content:center"><button class="btn" id="evoOk">Oba!</button></div></div>`);
+            $("#evoOk").onclick = () => { fechar(); res(); };
+        });
+    }
+    telaHub();
+    resumo(i);
+}
+const CODIGOS = {
+    rcinfinito: { nome: "Rapadura Mágica infinita", desc: "A Rapadura Mágica nunca acaba (aparece ∞ na mochila).", ativo: () => !!S.rcInfinito, ligar: v => { S.rcInfinito = v; } },
+    moneyinfinito: { nome: "Dinheiro infinito", desc: "O dinheiro nunca acaba (aparece $ ∞ no topo). Compras, tutora e pergaminhos ficam de graça na prática e você não perde dinheiro ao ser derrotado. Ao desativar, volta o dinheiro que você tinha antes de ativar.", ativo: () => !!S.dinInfinito, ligar: v => { if (v) {
+            S.dinAntes = S.dinheiro;
+            S.dinInfinito = true;
+            S.dinheiro = DIN_INF;
+        }
+        else {
+            S.dinInfinito = false;
+            S.dinheiro = S.dinAntes != null ? S.dinAntes : 500;
+            delete S.dinAntes;
+        } } }
+};
+function telaCodigos() {
+    if (!S) {
+        aviso("Comece ou continue um jogo para usar códigos.");
+        return;
+    }
+    const ativos = Object.entries(CODIGOS).filter(([, c]) => c.ativo());
+    modal(`<h3 style="margin:0 0 6px;font-family:var(--display);font-weight:400">Códigos</h3>
+    <p class="dica">Digite um código para liberar um truque neste jogo salvo.</p>
+    <div style="display:flex;gap:8px;margin:10px 0"><input id="codIn" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Digite o código" style="flex:1;min-width:0;padding:10px 12px;border-radius:10px;border:1px solid var(--linha);background:var(--painel2);color:inherit;font:inherit;font-size:16px"><button class="btn" id="codOk">Ativar</button></div>
+    <p class="dica" id="codMsg"></p>
+    ${ativos.length ? `<h4 style="margin:12px 0 6px">Códigos ativos</h4>` + ativos.map(([k, c]) => `<div class="item" style="grid-template-columns:1fr auto;display:grid;gap:8px;align-items:center;margin-bottom:6px"><div><b>${c.nome}</b><small style="display:block;color:var(--suave)">${c.desc}</small></div><button class="btn sec" data-desl="${k}">Desativar</button></div>`).join("") : ""}
+    <div class="acoes-modal"><button class="btn sec" id="codFechar">Fechar</button></div>`);
+    $("#codFechar").onclick = fechar;
+    const ativar = () => {
+        const k = $("#codIn").value.trim().toLowerCase().replace(/\s+/g, "");
+        const c = CODIGOS[k];
+        if (!c) {
+            $("#codMsg").textContent = "Código inválido.";
+            return;
+        }
+        if (c.ativo()) {
+            $("#codMsg").textContent = "Esse código já está ativo.";
+            return;
+        }
+        c.ligar(true);
+        salvar();
+        telaCodigos();
+        aviso(`Código ativado: ${c.nome}!`);
+    };
+    $("#codOk").onclick = ativar;
+    $("#codIn").onkeydown = ev => { if (ev.key === "Enter")
+        ativar(); };
+    camada.querySelectorAll("[data-desl]").forEach(b => b.onclick = () => { CODIGOS[b.dataset.desl].ligar(false); salvar(); telaCodigos(); aviso("Código desativado."); });
+    setTimeout(() => { const i = $("#codIn"); if (i)
+        i.focus(); }, 50);
 }
 /* ======================= TELA INICIAL ======================= */
 const PERFIL_X = "https://x.com/wasmorf1?s=11";
@@ -4642,7 +4764,7 @@ const WIKI = [
   <ul><li><b>${ORDEM.length}</b> espécies no Caderno de Campo.</li><li><b>18</b> tipos elementais.</li><li><b>18</b> ginásios, um de cada tipo.</li><li><b>${4 + CHAVES_T.length}</b> regiões para explorar.</li></ul>` },
     { g: "Começando", id: "passos", t: "Primeiros passos", h: () => `<ol><li>Na tela inicial, toque em <b>Começar</b> e crie seu personagem.</li><li>Escolha um inicial de qualquer uma das 9 gerações. Os outros iniciais podem ser capturados depois na natureza.</li><li>Vá para a <b>Trilha do Cerrado</b>: lá as criaturas só usam golpes que não causam dano, ótimo para treinar e capturar.</li><li>Compre Cristais de Captura e Poções no Mercado, dentro do Centro de Cura.</li><li>Quando sua equipe estiver forte, desafie os treinadores e o 1º ginásio.</li></ol>
   <p class="dica">Dica: o Centro de Cura recupera a equipe de graça, sempre que você quiser.</p>` },
-    { g: "Começando", id: "telas", t: "Telas e navegação", h: () => `<ul><li><b>Mapa</b>: tela principal, com os lugares, treinadores, lendas e sua equipe.</li><li><b>Ícone da aba</b>: a logo do Elementais aparece na aba do navegador e, no celular, como ícone ao adicionar o jogo à tela inicial.</li><li><b>Logo e nome Elementais</b> (no topo): voltam para o menu inicial. Durante uma batalha não funcionam; termine a batalha primeiro.</li><li><b>Topo</b>: seu personagem (abre o Cartão de Treinador), dinheiro, sol ou lua, insígnias e capturas.</li><li><b>Batalha</b>: menu com Atacar, Equipe, Mochila e Fugir. Toque na caixa de texto para adiantar as mensagens.</li><li><b>Rodapé do mapa</b>: Tabela de tipos, Wiki, Tela inicial, Recomeçar jogo e o perfil do criador no X.</li><li><b>Perfil do criador</b>: o botão <b>X @wasmorf1</b>, na tela inicial e no rodapé do mapa, abre o perfil do criador do jogo no X em uma nova aba.</li><li><b>Botão Voltar</b>: na criação do personagem volta para a tela inicial (o que você já escolheu fica guardado); na escolha do inicial volta para a criação do personagem.</li></ul>` },
+    { g: "Começando", id: "telas", t: "Telas e navegação", h: () => `<ul><li><b>Mapa</b>: tela principal, com os lugares, treinadores, lendas e sua equipe.</li><li><b>Ícone da aba</b>: a logo do Elementais aparece na aba do navegador e, no celular, como ícone ao adicionar o jogo à tela inicial.</li><li><b>Logo e nome Elementais</b> (no topo): voltam para o menu inicial. Durante uma batalha não funcionam; termine a batalha primeiro.</li><li><b>Topo</b>: seu personagem (abre o Cartão de Treinador), dinheiro, sol ou lua, insígnias e capturas.</li><li><b>Batalha</b>: menu com Atacar, Equipe, Mochila e Fugir. Toque na caixa de texto para adiantar as mensagens.</li><li><b>Rodapé do mapa</b>: Tabela de tipos, Wiki, Tela inicial, Cópia do jogo, Códigos, Recomeçar jogo e o perfil do criador no X.</li><li><b>Perfil do criador</b>: o botão <b>X @wasmorf1</b>, na tela inicial e no rodapé do mapa, abre o perfil do criador do jogo no X em uma nova aba.</li><li><b>Botão Voltar</b>: na criação do personagem volta para a tela inicial (o que você já escolheu fica guardado); na escolha do inicial volta para a criação do personagem.</li></ul>` },
     { g: "Personagem", id: "personagem", t: "Personagem e Cartão de Treinador", h: () => `<p>Você escolhe entre <b>Treinador</b> ou <b>Treinadora</b>, nome, tom de pele, cabelo, cor do cabelo, roupa e calça. O personagem aparece no topo da tela e entra nas batalhas antes de mandar a primeira criatura.</p><p>O <b>Cartão de Treinador</b> (toque no seu nome no topo) mostra registro, dinheiro, progresso do Caderno, casos do Bando Grilhão e as 18 insígnias. Por ele dá para editar o personagem quando quiser.</p><p>Na criação, o botão <b>Voltar</b> leva de volta à tela inicial sem perder o que você já montou. Na edição, <b>Cancelar</b> desfaz as mudanças.</p>` },
     { g: "Batalha", id: "batalha", t: "Como funciona a batalha", h: () => `<p>As batalhas são 1 contra 1, por turnos. Em cada turno você escolhe:</p><ul><li><b>Atacar</b>: usa um dos até 4 golpes da criatura. Cada golpe tem PP (usos).</li><li><b>Equipe</b>: troca a criatura em campo (o adversário ataca nesse turno).</li><li><b>Mochila</b>: usa itens de cura, captura ou batalha.</li><li><b>Fugir</b>: só contra criaturas selvagens.</li></ul>
   <p>Quem tem mais <b>Velocidade</b> ataca primeiro. Golpes como Golpe Rápido têm prioridade e sempre vão antes.</p>
@@ -4731,6 +4853,8 @@ const WIKI = [
     { g: "Itens", id: "itens-batalha", t: "Itens de batalha", h: () => `<p>Usados durante a batalha, sobem um atributo em 2 estágios até o fim dela.</p>` + listaItens("batalha") },
     { g: "Itens", id: "itens-segurar", t: "Itens segurados", h: () => `<p>Cada criatura segura um item por vez. Escolha no resumo da criatura, no campo <b>Segurando</b>.</p>` + listaItens("segurar") },
     { g: "Itens", id: "itens-evolucao", t: "Itens de evolução", h: () => listaItens("evolucao") },
+    { g: "Itens", id: "rapadura", t: "Rapadura Mágica", h: () => `<p>A <b>Rapadura Mágica</b> sobe uma criatura <b>1 nível na hora</b>.</p><ul><li>Use pelo resumo da criatura (toque nela na equipe): botão <b>Usar Rapadura Mágica</b>. Não dá para usar em batalha.</li><li>A criatura vai para o novo nível com o mínimo de EXP daquele nível.</li><li>Se houver golpe novo naquele nível, ela tenta aprender (e pergunta qual esquecer, se já souber 4).</li><li>Se ela evolui por nível (ou por amizade e já estiver com amizade alta) e cumprir o requisito, <b>evolui na hora</b>.</li><li>Também sobe a amizade (+5), como um nível normal.</li><li>Vendida no Mercado, aba Outros, por $${ITENS.rapadura.preco}.</li></ul>
+  <p>Com o código <b>rcinfinito</b> ativado, ela nunca acaba. Veja <button class="linkbtn" data-wk-ir="codigos">Códigos</button>.</p>` },
     { g: "Itens", id: "itens-chave", t: "Itens-chave e outros", h: () => listaItens("chave") + listaItens("outros") },
     { g: "Lugares", id: "vale", t: "Lugares do vale", h: () => tabelaHtml(["Lugar", "Níveis", "Observação"], Object.entries(LOCAIS).filter(([, l]) => !l.gerada).map(([k, l]) => [l.nome, l.niveis.join("–"), l.desc + (l.requer ? " Precisa da " + l.requer + "." : "")])) },
     { g: "Lugares", id: "territorios", t: "Territórios Selvagens", h: () => `<p>São ${CHAVES_T.length} regiões além do vale, do nível 4 ao 100. Cada território abre quando sua criatura mais forte chega perto do nível dele. Criaturas de nível alto já aparecem evoluídas.</p>` + tabelaHtml(["Território", "Níveis", "Espécies"], CHAVES_T.map(k => [LOCAIS[k].nome, LOCAIS[k].niveis.join("–"), LOCAIS[k].especies.length])) },
@@ -4743,6 +4867,7 @@ const WIKI = [
     { g: "Progresso", id: "grilhao", t: "Bando Grilhão", h: () => `<p>Quadrilha que trafica criaturas raras. A investigação tem 5 casos, que abrem conforme suas insígnias.</p>` + tabelaHtml(["Caso", "Lugar", "Insígnias"], MISSOES.map((m, i) => [(i + 1) + ". " + m.titulo, m.local, m.req])) + `<p>Ao final, o Projeto Quimera libera a lendária Quimerion.</p>` },
     { g: "Progresso", id: "caderno", t: "Caderno de Campo", h: () => `<p>Registra as ${ORDEM.length} espécies. Ver uma criatura anota nome e tipo; capturar completa a ficha (altura, peso, habitat, atributos e linha evolutiva). Tem busca, filtro por tipo e páginas.</p>` + tabelaHtml(["Meta", "Prêmio"], PREMIOS.map(p => [p.n ? p.n + " capturadas" : "Todas as espécies", p.texto])) },
     { g: "Progresso", id: "dinheiro", t: "Dinheiro", h: () => `<ul><li>Cada criatura derrotada dá nível × 8 (1,5× de treinadores, 3× de lendárias).</li><li>Treinadores e líderes pagam um prêmio extra.</li><li>Casos do Bando Grilhão e prêmios do Caderno também dão dinheiro.</li><li>A Moeda da Sorte dobra os ganhos em batalha.</li><li>Perder uma batalha custa metade do dinheiro.</li></ul>` },
+    { g: "Progresso", id: "codigos", t: "Códigos", h: () => `<p>No rodapé do mapa, <b>Códigos</b> abre uma caixa para digitar truques. O código vale só para o jogo salvo atual, fica salvo junto com ele e pode ser desativado na mesma tela.</p>` + tabelaHtml(["Código", "O que faz"], Object.entries(CODIGOS).map(([k, c]) => [`<b>${k}</b>`, c.desc])) },
     { g: "Progresso", id: "salvar", t: "Salvamento", h: () => `<p>O jogo <b>salva sozinho</b>, sem botão de salvar:</p><ul><li>depois de cada ação fora da batalha (comprar, curar, trocar item, mover no Terminal, criar pergaminho etc.);</li><li>no fim de cada turno da batalha e depois de cada criatura derrotada (EXP, dinheiro e itens gastos ficam guardados);</li><li>no fim da batalha, com prêmios, insígnias e evoluções;</li><li>quando você fecha a página ou troca de aplicativo no celular.</li></ul>
   <p>Se a página fechar no meio de uma batalha, a batalha em si some, mas HP, EXP, itens e dinheiro até ali ficam salvos. Uma criatura despertada é sempre salva na forma normal.</p>
   <h4>Onde fica salvo</h4><p>No próprio aparelho, dentro do navegador. Em outro aparelho ou navegador a jornada começa do zero. Limpar os dados do navegador ou usar janela anônima apaga o jogo salvo. Se o navegador não deixar salvar, aparece um aviso.</p>
