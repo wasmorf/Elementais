@@ -1834,6 +1834,7 @@ function menuEquipe(forcado) {
     });
 }
 function menuMochila(cat) {
+    garantirDinheiro();
     if (!cat) {
         dizer("Abrir qual bolso da mochila?");
         menu([["cura", "Cura"], ["captura", "Captura"], ["batalha", "Batalha"]].map(([c, n]) => {
@@ -1847,7 +1848,7 @@ function menuMochila(cat) {
     const itens = Object.keys(ITENS).filter(k => ITENS[k].cat === cat && S.mochila[k] > 0);
     menu(itens.map(k => {
         const off = cat === "captura" && B.tipo !== "selvagem";
-        return `<button class="op" data-it="${k}" ${off ? "disabled" : ""}><div class="mini" style="width:24px;height:30px">${iconeItem(k)}</div>${ITENS[k].nome}<small><span>${off ? "só em selvagens" : ITENS[k].desc}</span><span>×${S.mochila[k]}</span></small></button>`;
+        return `<button class="op" data-it="${k}" ${off ? "disabled" : ""}><div class="mini" style="width:24px;height:30px">${iconeItem(k)}</div>${ITENS[k].nome}<small><span>${off ? "só em selvagens" : ITENS[k].desc}</span><span>×${qtdTxt(k)}</span></small></button>`;
     }).join("")
         + (itens.length ? "" : `<button class="op largo" disabled>Nada neste bolso</button>`) + `<button class="op largo" data-v>Voltar</button>`);
     dizer("Usar qual item?");
@@ -2460,6 +2461,7 @@ async function turno(acao) {
     }
     if (acao.tipo === "cristal") {
         S.mochila[acao.k]--;
+        garantirDinheiro();
         if (await capturar(acao.k))
             return;
         await usarGolpe("ini", k);
@@ -4497,10 +4499,11 @@ function telaBercario() {
 /* ======================= RAPADURA MÁGICA e CÓDIGOS ======================= */
 const DIN_INF = 999999999;
 function garantirDinheiro() { if (S && S.dinInfinito)
-    S.dinheiro = DIN_INF; }
+    S.dinheiro = DIN_INF; if (S && S.mbInfinito && S.mochila)
+    S.mochila.cristalmestre = 99; }
 const dinTxt = () => S && S.dinInfinito ? "∞" : S ? S.dinheiro : 0;
 const temItem = k => (k === "rapadura" && S && S.rcInfinito) || (S && S.mochila[k] > 0);
-const qtdTxt = k => k === "rapadura" && S && S.rcInfinito ? "∞" : (S && S.mochila[k] || 0);
+const qtdTxt = k => (k === "rapadura" && S && S.rcInfinito) || (k === "cristalmestre" && S && S.mbInfinito) ? "∞" : (S && S.mochila[k] || 0);
 function aprenderFora(c, g) {
     return new Promise(res => {
         const G = GOLPES[g], nm = nomeDe(c);
@@ -4556,8 +4559,8 @@ async function usarRapadura(i) {
     resumo(i);
 }
 const CODIGOS = {
-    rcinfinito: { nome: "Rapadura Mágica infinita", desc: "A Rapadura Mágica nunca acaba (aparece ∞ na mochila).", ativo: () => !!S.rcInfinito, ligar: v => { S.rcInfinito = v; } },
-    moneyinfinito: { nome: "Dinheiro infinito", desc: "O dinheiro nunca acaba (aparece $ ∞ no topo). Compras, tutora e pergaminhos ficam de graça na prática e você não perde dinheiro ao ser derrotado. Ao desativar, volta o dinheiro que você tinha antes de ativar.", ativo: () => !!S.dinInfinito, ligar: v => { if (v) {
+    c4033757531: { nome: "Rapadura Mágica infinita", desc: "A Rapadura Mágica nunca acaba (aparece ∞ na mochila).", ativo: () => !!S.rcInfinito, ligar: v => { S.rcInfinito = v; } },
+    c3122810584: { nome: "Dinheiro infinito", desc: "O dinheiro nunca acaba (aparece $ ∞ no topo). Compras, tutora e pergaminhos ficam de graça na prática e você não perde dinheiro ao ser derrotado. Ao desativar, volta o dinheiro que você tinha antes de ativar.", ativo: () => !!S.dinInfinito, ligar: v => { if (v) {
             S.dinAntes = S.dinheiro;
             S.dinInfinito = true;
             S.dinheiro = DIN_INF;
@@ -4566,6 +4569,16 @@ const CODIGOS = {
             S.dinInfinito = false;
             S.dinheiro = S.dinAntes != null ? S.dinAntes : 500;
             delete S.dinAntes;
+        } } },
+    c422415143: { nome: "Cristal Mestre infinito", desc: "O Cristal Mestre (captura sem falhar) nunca acaba (aparece ∞ na mochila). Ao desativar, volta a quantidade que você tinha antes.", ativo: () => !!S.mbInfinito, ligar: v => { if (v) {
+            S.mbAntes = S.mochila.cristalmestre || 0;
+            S.mbInfinito = true;
+            S.mochila.cristalmestre = 99;
+        }
+        else {
+            S.mbInfinito = false;
+            S.mochila.cristalmestre = S.mbAntes || 0;
+            delete S.mbAntes;
         } } }
 };
 function telaCodigos() {
@@ -4582,7 +4595,7 @@ function telaCodigos() {
     <div class="acoes-modal"><button class="btn sec" id="codFechar">Fechar</button></div>`);
     $("#codFechar").onclick = fechar;
     const ativar = () => {
-        const k = $("#codIn").value.trim().toLowerCase().replace(/\s+/g, "");
+        const k = "c" + hashStr("elem|" + $("#codIn").value.trim().toLowerCase().replace(/\s+/g, ""));
         const c = CODIGOS[k];
         if (!c) {
             $("#codMsg").textContent = "Código inválido.";
@@ -4884,7 +4897,7 @@ const WIKI = [
     { g: "Itens", id: "itens-segurar", t: "Itens segurados", h: () => `<p>Cada criatura segura um item por vez. Escolha no resumo da criatura, no campo <b>Segurando</b>.</p>` + listaItens("segurar") },
     { g: "Itens", id: "itens-evolucao", t: "Itens de evolução", h: () => listaItens("evolucao") },
     { g: "Itens", id: "rapadura", t: "Rapadura Mágica", h: () => `<p>A <b>Rapadura Mágica</b> sobe uma criatura <b>1 nível na hora</b>.</p><ul><li>Use pelo resumo da criatura (toque nela na equipe): botão <b>Usar Rapadura Mágica</b>. Não dá para usar em batalha.</li><li>A criatura vai para o novo nível com o mínimo de EXP daquele nível.</li><li>Se houver golpe novo naquele nível, ela tenta aprender (e pergunta qual esquecer, se já souber 4).</li><li>Se ela evolui por nível (ou por amizade e já estiver com amizade alta) e cumprir o requisito, <b>evolui na hora</b>.</li><li>Também sobe a amizade (+5), como um nível normal.</li><li>Vendida no Mercado, aba Outros, por $${ITENS.rapadura.preco}.</li></ul>
-  <p>Com o código <b>rcinfinito</b> ativado, ela nunca acaba. Veja <button class="linkbtn" data-wk-ir="codigos">Códigos</button>.</p>` },
+` },
     { g: "Itens", id: "itens-chave", t: "Itens-chave e outros", h: () => listaItens("chave") + listaItens("outros") },
     { g: "Lugares", id: "vale", t: "Lugares do vale", h: () => tabelaHtml(["Lugar", "Níveis", "Observação"], Object.entries(LOCAIS).filter(([, l]) => !l.gerada).map(([k, l]) => [l.nome, l.niveis.join("–"), l.desc + (l.requer ? " Precisa da " + l.requer + "." : "")])) },
     { g: "Lugares", id: "territorios", t: "Territórios Selvagens", h: () => `<p>São ${CHAVES_T.length} regiões além do vale, do nível 4 ao 100. Cada território abre quando sua criatura mais forte chega perto do nível dele. Criaturas de nível alto já aparecem evoluídas.</p>` + tabelaHtml(["Território", "Níveis", "Espécies"], CHAVES_T.map(k => [LOCAIS[k].nome, LOCAIS[k].niveis.join("–"), LOCAIS[k].especies.length])) },
@@ -4897,7 +4910,7 @@ const WIKI = [
     { g: "Progresso", id: "grilhao", t: "Bando Grilhão", h: () => `<p>Quadrilha que trafica criaturas raras. A investigação tem 5 casos, que abrem conforme suas insígnias.</p>` + tabelaHtml(["Caso", "Lugar", "Insígnias"], MISSOES.map((m, i) => [(i + 1) + ". " + m.titulo, m.local, m.req])) + `<p>Ao final, o Projeto Quimera libera a lendária Quimerion.</p>` },
     { g: "Progresso", id: "caderno", t: "Caderno de Campo", h: () => `<p>Registra as ${ORDEM.length} espécies. Ver uma criatura anota nome e tipo; capturar completa a ficha (altura, peso, habitat, atributos e linha evolutiva). Tem busca, filtro por tipo e páginas.</p>` + tabelaHtml(["Meta", "Prêmio"], PREMIOS.map(p => [p.n ? p.n + " capturadas" : "Todas as espécies", p.texto])) },
     { g: "Progresso", id: "dinheiro", t: "Dinheiro", h: () => `<ul><li>Cada criatura derrotada dá nível × 8 (1,5× de treinadores, 3× de lendárias).</li><li>Treinadores e líderes pagam um prêmio extra.</li><li>Casos do Bando Grilhão e prêmios do Caderno também dão dinheiro.</li><li>A Moeda da Sorte dobra os ganhos em batalha.</li><li>Perder uma batalha custa metade do dinheiro.</li></ul>` },
-    { g: "Progresso", id: "codigos", t: "Códigos", h: () => `<p>No rodapé do mapa, <b>Códigos</b> abre uma caixa para digitar truques. O código vale só para o jogo salvo atual, fica salvo junto com ele e pode ser desativado na mesma tela.</p>` + tabelaHtml(["Código", "O que faz"], Object.entries(CODIGOS).map(([k, c]) => [`<b>${k}</b>`, c.desc])) },
+    { g: "Progresso", id: "codigos", t: "Códigos", h: () => `<p>O jogo tem <b>códigos secretos</b> que liberam truques. Eles não são mostrados em lugar nenhum: só funciona quem souber o código.</p><ul><li>No rodapé do mapa, toque em <b>Códigos</b> e digite o código (maiúsculas e espaços não importam).</li><li>O código vale só para o jogo salvo atual e fica salvo junto com ele.</li><li>Na mesma tela aparecem os truques ativos, com o botão para desativar.</li></ul>` },
     { g: "Progresso", id: "salvar", t: "Salvamento", h: () => `<p>O jogo <b>salva sozinho</b>, sem botão de salvar:</p><ul><li>depois de cada ação fora da batalha (comprar, curar, trocar item, mover no Terminal, criar pergaminho etc.);</li><li>no fim de cada turno da batalha e depois de cada criatura derrotada (EXP, dinheiro e itens gastos ficam guardados);</li><li>no fim da batalha, com prêmios, insígnias e evoluções;</li><li>quando você fecha a página ou troca de aplicativo no celular.</li></ul>
   <p>Se a página fechar no meio de uma batalha, a batalha em si some, mas HP, EXP, itens e dinheiro até ali ficam salvos. Uma criatura despertada é sempre salva na forma normal.</p>
   <h4>Onde fica salvo</h4><p>No próprio aparelho, dentro do navegador. Em outro aparelho ou navegador a jornada começa do zero. Limpar os dados do navegador ou usar janela anônima apaga o jogo salvo. Se o navegador não deixar salvar, aparece um aviso.</p>
